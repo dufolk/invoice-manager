@@ -1,0 +1,54 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}发票管理系统{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'invoices/css/manage/style.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if user.is_authenticated and not hide_nav %}
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="user-info">
+                <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                <div class="user-role">管理员</div>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li><a href="{% url 'invoices:manage_dashboard' %}" class="{% if request.resolver_match.url_name == 'manage_dashboard' %}active{% endif %}">
+                <span class="icon">📊</span>控制台
+            </a></li>
+            <li><a href="{% url 'invoices:manage_invoice_list' %}" class="{% if 'invoice' in request.resolver_match.url_name %}active{% endif %}">
+                <span class="icon">📄</span>发票管理
+            </a></li>
+            <li><a href="{% url 'invoices:manage_expense_type_list' %}" class="{% if 'expense_type' in request.resolver_match.url_name %}active{% endif %}">
+                <span class="icon">📁</span>费用类型
+            </a></li>
+            <li class="nav-divider"></li>
+            <li><a href="{% url 'invoices:dashboard' %}" class="return-site">
+                <span class="icon">🏠</span>返回站点
+            </a></li>
+            <li><a href="{% url 'invoices:manage_logout' %}" class="logout">
+                <span class="icon">🚪</span>退出登录
+            </a></li>
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <main class="main-content {% if user.is_authenticated and not hide_nav %}with-sidebar{% endif %}">
+        {% block content %}{% endblock %}
+    </main>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html> 

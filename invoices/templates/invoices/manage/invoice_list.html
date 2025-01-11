@@ -1,0 +1,237 @@
+{% extends 'invoices/manage/base.html' %}
+{% load static %}
+
+{% block title %}发票管理 - 发票管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>发票管理</h1>
+    <div class="page-actions">
+        <a href="{% url 'invoices:manage_invoice_add' %}" class="btn btn-primary">
+            <span class="icon">➕</span>添加发票
+        </a>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="form-group">
+            <input type="text" name="search" placeholder="搜索发票号或报销人" value="{{ request.GET.search }}">
+        </div>
+        <div class="form-group">
+            <select name="type">
+                <option value="">所有类型</option>
+                <option value="DAILY" {% if request.GET.type == 'DAILY' %}selected{% endif %}>日常发票</option>
+                <option value="TRAVEL" {% if request.GET.type == 'TRAVEL' %}selected{% endif %}>差旅发票</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <select name="expense_type">
+                <option value="">所有费用类型</option>
+                {% for type in expense_types %}
+                <option value="{{ type.id }}" {% if request.GET.expense_type == type.id|stringformat:"i" %}selected{% endif %}>
+                    {{ type.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <select name="year">
+                <option value="">所有年份</option>
+                {% for year in available_years %}
+                <option value="{{ year }}" {% if request.GET.year == year|stringformat:"i" %}selected{% endif %}>
+                    {{ year }}年
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <select name="month">
+                <option value="">所有月份</option>
+                {% for month in available_months %}
+                <option value="{{ month }}" {% if request.GET.month == month|stringformat:"i" %}selected{% endif %}>
+                    {{ month }}月
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-filter">
+            <span class="icon">🔍</span>
+            搜索
+        </button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>发票号</th>
+                    <th>类型</th>
+                    <th>费用类型</th>
+                    <th>金额</th>
+                    <th>报销人</th>
+                    <th>发票日期</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in invoices %}
+                <tr data-invoice-id="{{ invoice.id }}">
+                    <td>{{ invoice.invoice_number }}</td>
+                    <td>{{ invoice.get_invoice_type_display }}</td>
+                    <td>{{ invoice.expense_type.name }}</td>
+                    <td>¥{{ invoice.amount|floatformat:2 }}</td>
+                    <td>{{ invoice.reimbursement_person }}</td>
+                    <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
+                    <td class="actions">
+                        <a href="{% url 'invoices:manage_invoice_edit' invoice.id %}" class="btn-icon" title="编辑">
+                            ✏️
+                        </a>
+                        <a href="{% url 'invoices:manage_invoice_delete' invoice.id %}" class="btn-icon delete" title="删除">
+                            🗑️
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="empty-message">暂无发票记录</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+        <a href="?page=1" class="btn">首页</a>
+        <a href="?page={{ page_obj.previous_page_number }}" class="btn">上一页</a>
+        {% endif %}
+
+        <span class="current-page">
+            第 {{ page_obj.number }} 页，共 {{ page_obj.paginator.num_pages }} 页
+        </span>
+
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="btn">下一页</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}" class="btn">末页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="list-footer">
+    <div class="summary-info">
+        <div class="total-amount">
+            <span class="label">筛选结果总金额：</span>
+            <span class="value">¥{{ total_amount|floatformat:2 }}</span>
+        </div>
+    </div>
+    <div class="action-buttons">
+        <button type="button" class="btn btn-chart" onclick="showPersonalStats()">
+            <span class="icon">📈</span>个人报销统计
+        </button>
+        <button type="button" class="btn btn-chart" onclick="showExpenseTypeStats()">
+            <span class="icon">📊</span>费用类型分析
+        </button>
+        <button type="button" class="btn btn-export">
+            <span class="icon">📥</span>导出Excel
+        </button>
+    </div>
+</div>
+
+<div id="statsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">个人月度报销统计</h3>
+            <button type="button" class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="stats-search">
+                <div class="search-form">
+                    <input type="text" id="personSearch" placeholder="输入报销人姓名，按回车搜索">
+                    <button type="button" class="btn btn-chart" onclick="searchPersonStats()">
+                        <span class="icon">🔍</span>
+                    </button>
+                </div>
+            </div>
+            <div id="statsChart" style="width: 100%; height: 400px;"></div>
+            <div id="noDataTip" class="no-data-tip" style="display: none;">
+                未找到相关数据，请尝试其他搜索条件
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="invoiceDetailModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>发票详情</h3>
+            <button type="button" class="close-btn" onclick="closeInvoiceDetail()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="invoice-detail">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>发票号码</label>
+                        <div id="detailInvoiceNumber"></div>
+                    </div>
+                    <div class="detail-item">
+                        <label>发票类型</label>
+                        <div id="detailInvoiceType"></div>
+                    </div>
+                    <div class="detail-item">
+                        <label>费用类型</label>
+                        <div id="detailExpenseType"></div>
+                    </div>
+                    <div class="detail-item">
+                        <label>金额</label>
+                        <div id="detailAmount"></div>
+                    </div>
+                    <div class="detail-item">
+                        <label>报销人</label>
+                        <div id="detailPerson"></div>
+                    </div>
+                    <div class="detail-item">
+                        <label>发票日期</label>
+                        <div id="detailDate"></div>
+                    </div>
+                    <div class="detail-item full">
+                        <label>报销内容明细</label>
+                        <div id="detailDetails"></div>
+                    </div>
+                    <div class="detail-item full">
+                        <label>备注</label>
+                        <div id="detailRemarks"></div>
+                    </div>
+                    <div class="detail-item full">
+                        <label>发票图片</label>
+                        <div class="detail-image">
+                            <img id="detailImage" src="" alt="发票图片">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="expenseTypeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>费用类型分布分析</h3>
+            <button type="button" class="close-btn" onclick="closeExpenseTypeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="expenseTypeChart" style="width: 100%; height: 400px;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="{% static 'invoices/js/invoice-stats.js' %}"></script>
+{% endblock %} 

@@ -1,0 +1,32 @@
+{% extends 'invoices/manage/base.html' %}
+
+{% block title %}{% if expense_type %}编辑{% else %}添加{% endif %}费用类型 - 发票管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if expense_type %}编辑{% else %}添加{% endif %}费用类型</h1>
+</div>
+
+<div class="card">
+    <form method="post" class="form">
+        {% csrf_token %}
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="name">名称*</label>
+                <input type="text" id="name" name="name" required
+                       value="{{ expense_type.name|default:'' }}">
+            </div>
+
+            <div class="form-group full-width">
+                <label for="description">描述</label>
+                <textarea id="description" name="description" rows="4">{{ expense_type.description|default:'' }}</textarea>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="{% url 'invoices:manage_expense_type_list' %}" class="btn">取消</a>
+        </div>
+    </form>
+</div>
+{% endblock %} 

@@ -1,0 +1,24 @@
+{% extends 'invoices/manage/base.html' %}
+
+{% block title %}删除费用类型 - 发票管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>删除费用类型</h1>
+</div>
+
+<div class="card">
+    <div class="confirm-delete">
+        <h3>确定要删除费用类型 "{{ expense_type.name }}" 吗？</h3>
+        <p class="warning">此操作不可恢复，相关的发票记录将失去费用类型关联。</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">确认删除</button>
+                <a href="{% url 'invoices:manage_expense_type_list' %}" class="btn">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

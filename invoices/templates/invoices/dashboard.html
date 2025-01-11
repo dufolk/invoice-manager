@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>发票管理系统 - 数据大屏</title>
+    <link rel="stylesheet" href="{% static 'invoices/css/dashboard.css' %}">
+    <script src="{% static 'invoices/js/echarts.min.js' %}"></script>
+    <style>
+        .admin-login {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .admin-btn {
+            background: rgba(0, 198, 255, 0.1);
+            border: 1px solid rgba(0, 198, 255, 0.3);
+            color: #00C6FF;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .admin-btn:hover {
+            background: rgba(0, 198, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-login">
+        <a href="{% url 'invoices:manage_login' %}" class="admin-btn">管理员登录</a>
+    </div>
+    <div class="header">发票管理数据可视化平台</div>
+    
+    <div class="dashboard-container">
+        <div class="left-panel">
+            <div class="panel-title">基础统计</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_amount }}</div>
+                    <div class="stat-label">总金额 (元)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ invoice_count }}</div>
+                    <div class="stat-label">发票总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ daily_count }}</div>
+                    <div class="stat-label">日常发票数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ travel_count }}</div>
+                    <div class="stat-label">差旅发票数</div>
+                </div>
+            </div>
+            <div id="typeChart" class="chart-container"></div>
+        </div>
+
+        <div class="main-chart">
+            <div class="panel-title">月度发票金额趋势</div>
+            <div class="decoration-line top"></div>
+            <div id="monthlyChart" class="chart-container"></div>
+            <div class="decoration-line bottom"></div>
+        </div>
+
+        <div class="right-panel">
+            <div class="panel-title">费用类型分布</div>
+            <div id="expenseTypeChart" class="chart-container"></div>
+        </div>
+
+        <div class="bottom-panel">
+            <div class="panel-title">差旅费用构成</div>
+            <div id="travelChart" class="chart-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const monthlyLabels = {{ monthly_labels|safe }};
+        const monthlyData = {{ monthly_data|safe }};
+        const typeData = {{ type_data|safe }};
+        const expenseTypeData = {{ expense_type_data|safe }};
+        const travelLabels = {{ travel_labels|safe }};
+        const travelData = {{ travel_data|safe }};
+    </script>
+    <script src="{% static 'invoices/js/dashboard.js' %}"></script>
+</body>
+</html> 
