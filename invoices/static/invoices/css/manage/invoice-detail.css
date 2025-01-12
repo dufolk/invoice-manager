@@ -1,0 +1,119 @@
+/* 发票详情模态框样式 */
+.invoice-detail {
+    padding: 10px;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.detail-item {
+    background: rgba(13, 25, 76, 0.5);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 198, 255, 0.1);
+}
+
+.detail-item.full {
+    grid-column: 1 / -1;
+}
+
+.detail-item label {
+    display: block;
+    color: #7EAEFF;
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.detail-item div {
+    color: #fff;
+    font-size: 16px;
+}
+
+.detail-image {
+    margin-top: 20px;
+    background: rgba(13, 25, 76, 0.5);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 198, 255, 0.1);
+    position: relative;
+    width: 100%;
+}
+
+/* PDF 预览容器 */
+.detail-image.pdf-container {
+    height: 0;
+    padding-bottom: 70.7%;   /* A4横向比例 */
+}
+
+/* 图片预览容器 */
+.detail-image.image-container {
+    height: auto;
+    min-height: 200px;
+    max-height: 500px;
+}
+
+/* 无文件容器 */
+.detail-image.empty-container {
+    height: 200px;  /* 固定高度 */
+    padding-bottom: 0;
+    display: flex;           /* 添加 flex 布局 */
+    align-items: center;     /* 垂直居中 */
+    justify-content: center; /* 水平居中 */
+}
+
+/* 图片预览样式 */
+.detail-image.image-container img {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
+/* PDF 预览样式 */
+.detail-image.pdf-container embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+}
+
+.no-file-message {
+    position: static;
+    top: auto;
+    left: auto;
+    transform: none;
+    padding: 40px;
+    background: rgba(13, 25, 76, 0.3);
+    border-radius: 4px;
+    color: #7EAEFF;
+    text-align: center;
+    width: 80%;
+}
+
+.pdf-fallback {
+    padding: 20px;
+    text-align: center;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(13, 25, 76, 0.8);
+}
+
+.pdf-fallback .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+}
+
+/* 当发票是竖向时的样式 */
+.detail-image.portrait {
+    padding-bottom: 141.4%;  /* A4纸竖向比例 */
+} 

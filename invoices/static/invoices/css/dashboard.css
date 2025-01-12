@@ -5,8 +5,7 @@
 }
 
 html, body {
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
     background: linear-gradient(to bottom, #040B27, #081449);
     color: #fff;
     font-family: 'Microsoft YaHei', sans-serif;
@@ -52,10 +51,16 @@ html, body {
         "left main right"
         "left bottom right";
     grid-template-columns: 300px 1fr 300px;
-    grid-template-rows: 1fr 300px;
+    grid-template-rows: 1fr auto;
     gap: 20px;
     padding: 20px;
-    height: calc(100vh - 60px);
+    min-height: calc(100vh - 60px);
+}
+
+.left-panel, .right-panel, .main-chart, .bottom-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .left-panel {
@@ -64,8 +69,6 @@ html, body {
     border-radius: 10px;
     border: 1px solid rgba(0, 198, 255, 0.1);
     padding: 20px;
-    display: flex;
-    flex-direction: column;
 }
 
 .main-chart {
@@ -82,8 +85,6 @@ html, body {
     border-radius: 10px;
     border: 1px solid rgba(0, 198, 255, 0.1);
     padding: 20px;
-    display: flex;
-    flex-direction: column;
 }
 
 .bottom-panel {
@@ -92,25 +93,26 @@ html, body {
     border-radius: 10px;
     border: 1px solid rgba(0, 198, 255, 0.1);
     padding: 20px;
+    /* height: 140px; */
 }
 
 .panel-title {
     color: #00C6FF;
     font-size: 18px;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
     border-bottom: 1px solid rgba(0, 198, 255, 0.2);
 }
 
 .stats-grid {
     display: grid;
-    gap: 15px;
-    margin-bottom: 20px;
+    gap: 10px;
+    margin-bottom: 15px;
 }
 
 .stat-card {
     background: rgba(13, 25, 76, 0.5);
-    padding: 15px;
+    padding: 10px;
     border-radius: 8px;
     border: 1px solid rgba(0, 198, 255, 0.1);
     text-align: center;
@@ -129,13 +131,13 @@ html, body {
 
 .chart-container {
     flex: 1;
-    min-height: 0;  /* 重要：防止flex子元素溢出 */
+    min-height: 0;
 }
 
 #typeChart {
-    height: 200px;
+    height: 180px;
 }
 
-#monthlyChart, #expenseTypeChart, #travelChart {
+#monthlyChart {
     height: 100%;
 } 

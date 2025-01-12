@@ -29,9 +29,11 @@
                 <label for="expense_type">费用类型*</label>
                 <select id="expense_type" name="expense_type" required>
                     {% for type in expense_types %}
-                    <option value="{{ type.id }}" {% if invoice.expense_type_id == type.id %}selected{% endif %}>
-                        {{ type.name }}
-                    </option>
+                        {% if invoice_type == 'DAILY' and type.category != 'TRAVEL' or invoice_type == 'TRAVEL' and type.category != 'DAILY' %}
+                            <option value="{{ type.id }}" {% if invoice.expense_type_id == type.id %}selected{% endif %}>
+                                {{ type.name }}
+                            </option>
+                        {% endif %}
                     {% endfor %}
                 </select>
             </div>
@@ -55,18 +57,24 @@
             </div>
 
             <div class="form-group full-width">
-                <label for="details">发票明细</label>
+                <label for="details">报销内容明细</label>
                 <textarea id="details" name="details" rows="4">{{ invoice.details|default:'' }}</textarea>
             </div>
 
+            <div class="form-group full-width">
+                <label for="remarks">备注</label>
+                <textarea id="remarks" name="remarks" rows="4">{{ invoice.remarks|default:'' }}</textarea>
+            </div>
+
             <div class="form-group">
-                <label for="image">发票照片{% if not invoice %}*{% endif %}</label>
-                {% if invoice.image %}
-                <div class="current-image">
-                    <img src="{{ invoice.image.url }}" alt="当前发票照片">
+                <label for="file">发票文件*</label>
+                <div class="file-upload-group">
+                    {% csrf_token %}
+                    <input type="file" id="file" name="file" accept="image/*,application/pdf" required>
+                    <button type="button" id="parse-btn" class="btn btn-primary">
+                        <span class="icon">📄</span>解析
+                    </button>
                 </div>
-                {% endif %}
-                <input type="file" id="image" name="image" accept="image/*" {% if not invoice %}required{% endif %}>
             </div>
         </div>
 
@@ -96,14 +104,57 @@
                     <input type="text" id="destination" name="destination"
                            value="{{ invoice.travelinvoice.destination|default:'' }}">
                 </div>
+            </div>
 
-                <div class="form-group">
-                    <label for="expense_category">费用类别*</label>
-                    <select id="expense_category" name="expense_category">
-                        <option value="TRANSPORT" {% if invoice.travelinvoice.expense_category == 'TRANSPORT' %}selected{% endif %}>交通</option>
-                        <option value="ACCOMMODATION" {% if invoice.travelinvoice.expense_category == 'ACCOMMODATION' %}selected{% endif %}>住宿</option>
-                        <option value="OTHER" {% if invoice.travelinvoice.expense_category == 'OTHER' %}selected{% endif %}>其他</option>
-                    </select>
+            <div id="transport_details" class="detail-section" style="display: none;">
+                <h4>交通明细</h4>
+                <div class="transport-item">
+                    <div class="form-group">
+                        <label>交通类型*</label>
+                        <select name="transport_type" class="transport-type" required>
+                            <option value="TRAIN">高铁</option>
+                            <option value="PLANE">飞机</option>
+                            <option value="BUS">汽车</option>
+                            <option value="TAXI">出租车</option>
+                            <option value="OTHER">其他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>出发时间*</label>
+                        <input type="datetime-local" name="departure_time" required>
+                    </div>
+                    <div class="form-group">
+                        <label>出发地*</label>
+                        <input type="text" name="departure_place" required>
+                    </div>
+                    <div class="form-group">
+                        <label>目的地*</label>
+                        <input type="text" name="destination" required>
+                    </div>
+                    <div class="form-group seat-type-group">
+                        <label>座位类型*</label>
+                        <select name="seat_type" class="seat-type" required>
+                            <!-- 选项将由 JavaScript 动态填充 -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="accommodation_details" class="detail-section" style="display: none;">
+                <h4>住宿明细</h4>
+                <div class="accommodation-item">
+                    <div class="form-group">
+                        <label>入住日期*</label>
+                        <input type="date" name="check_in_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>离店日期*</label>
+                        <input type="date" name="check_out_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>酒店名称*</label>
+                        <input type="text" name="hotel_name" required>
+                    </div>
                 </div>
             </div>
         </div>
@@ -114,25 +165,358 @@
         </div>
     </form>
 </div>
+
+<!-- 解析确认模态框 -->
+<div id="parse-confirm-modal" class="modal parse-modal">
+    <div class="modal-content">
+        <button type="button" class="close-btn" id="close-parse">×</button>
+        <h3>发票解析结果确认</h3>
+        <div class="parse-result">
+            <div class="result-item">
+                <label>发票号码：</label>
+                <span id="modal-invoice-num"></span>
+            </div>
+            <div class="result-item">
+                <label>发票金额：</label>
+                <span id="modal-amount"></span>
+            </div>
+            <div class="result-item">
+                <label>发票日期：</label>
+                <span id="modal-date"></span>
+            </div>
+            <div class="result-item">
+                <label>报销内容：</label>
+                <span id="modal-details"></span>
+            </div>
+            <div class="result-item">
+                <label>备注：</label>
+                <span id="modal-remarks"></span>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-primary" id="confirm-parse">确认填充</button>
+            <button type="button" class="btn" id="cancel-parse">取消</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const invoiceTypeSelect = document.getElementById('invoice_type');
+    const expenseTypeSelect = document.getElementById('expense_type');
     const travelDetails = document.getElementById('travel_details');
-    const travelInputs = travelDetails.querySelectorAll('input, select');
+    const transportDetails = document.getElementById('transport_details');
+    const accommodationDetails = document.getElementById('accommodation_details');
 
-    function toggleTravelFields() {
+    function updateExpenseTypeAndDetails() {
         const isTravel = invoiceTypeSelect.value === 'TRAVEL';
+        
+        // 显示/隐藏差旅信息部分
         travelDetails.style.display = isTravel ? 'block' : 'none';
+        
+        // 获取所有差旅相关的必填字段
+        const travelInputs = travelDetails.querySelectorAll('input[required], select[required]');
+        
+        // 根据是否是差旅发票设置必填属性
         travelInputs.forEach(input => {
-            input.required = isTravel;
+            if (isTravel) {
+                input.setAttribute('required', '');
+            } else {
+                input.removeAttribute('required');
+            }
+        });
+        
+        // 获取所有费用类型选项
+        const options = expenseTypeSelect.options;
+        
+        // 清空当前选项
+        expenseTypeSelect.innerHTML = '';
+        
+        // 根据发票类型筛选并添加对应的费用类型选项
+        {% for type in expense_types %}
+        if ((isTravel && "{{ type.category }}" === "TRAVEL") || 
+            (!isTravel && "{{ type.category }}" !== "TRAVEL")) {
+            const option = new Option("{{ type.name }}", "{{ type.id }}");
+            expenseTypeSelect.add(option);
+        }
+        {% endfor %}
+
+        // 如果是差旅发票，监听费用类型变化
+        if (isTravel) {
+            expenseTypeSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const typeName = selectedOption.text;
+                
+                // 根据费用类型显示对应的明细部分
+                const showTransport = typeName === '交通费';
+                const showAccommodation = typeName === '住宿费';
+                
+                transportDetails.style.display = showTransport ? 'block' : 'none';
+                accommodationDetails.style.display = showAccommodation ? 'block' : 'none';
+                
+                // 设置明细字段的必填状态
+                const transportInputs = transportDetails.querySelectorAll('input, select');
+                const accommodationInputs = accommodationDetails.querySelectorAll('input, select');
+                
+                transportInputs.forEach(input => {
+                    if (showTransport) {
+                        input.setAttribute('required', '');
+                    } else {
+                        input.removeAttribute('required');
+                    }
+                });
+                
+                accommodationInputs.forEach(input => {
+                    if (showAccommodation) {
+                        input.setAttribute('required', '');
+                    } else {
+                        input.removeAttribute('required');
+                    }
+                });
+            });
+            
+            // 触发一次change事件以设置初始状态
+            expenseTypeSelect.dispatchEvent(new Event('change'));
+        }
+    }
+
+    // 监听发票类型变化
+    invoiceTypeSelect.addEventListener('change', updateExpenseTypeAndDetails);
+    
+    // 页面加载时初始化
+    updateExpenseTypeAndDetails();
+
+    // 初始化现有的交通明细项
+    const transportItems = document.querySelectorAll('.transport-item');
+    if (transportItems.length > 0) {
+        transportItems.forEach(bindTransportTypeEvents);
+    }
+
+    // 解析按钮点击事件
+    const parseBtn = document.getElementById('parse-btn');
+
+    if (parseBtn) {
+        parseBtn.addEventListener('click', async function() {
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('请先选择文件');
+                return;
+            }
+
+            // 判断文件类型
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            if (!['pdf', 'jpg', 'jpeg', 'png'].includes(fileExt)) {
+                alert('仅支持PDF和图片文件(jpg, jpeg, png)');
+                return;
+            }
+
+            // 读取文件为 base64
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64Data = e.target.result.split(',')[1];
+                
+                try {
+                    showLoading();
+
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    const formData = new FormData();
+                    formData.append('file_data', base64Data);
+                    formData.append('file_type', fileExt);
+
+                    const response = await fetch('{% url "invoices:parse_invoice" %}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success && data.words_result) {
+                        // 显示确认模态框
+                        const modal = document.getElementById('parse-confirm-modal');
+                        const result = data.words_result;
+                        
+                        // 处理金额
+                        const amount = result.AmountInFiguers || '';
+                        
+                        // 处理报销内容
+                        const commodityNames = result.CommodityName || [];
+                        let details = '';
+                        if (commodityNames.length === 1) {
+                            details = commodityNames[0].Value || commodityNames[0].word || '';
+                        } else if (commodityNames.length > 1) {
+                            details = `${commodityNames[0].Value || commodityNames[0].word}等`;
+                        }
+                        
+                        // 填充模态框数据
+                        document.getElementById('modal-invoice-num').textContent = result.InvoiceNum || '';
+                        document.getElementById('modal-amount').textContent = amount;
+                        document.getElementById('modal-date').textContent = result.InvoiceDate || '';
+                        document.getElementById('modal-details').textContent = details;
+                        document.getElementById('modal-remarks').textContent = result.Remarks || '';
+                        
+                        // 显示模态框
+                        modal.classList.add('show');
+                        console.log('显示模态框');  // 添加调试日志
+                        
+                        // 绑定关闭事件
+                        const closeBtn = document.getElementById('close-parse');
+                        const confirmBtn = document.getElementById('confirm-parse');
+                        const cancelBtn = document.getElementById('cancel-parse');
+                        
+                        const hideModal = () => {
+                            modal.classList.remove('show');
+                            console.log('隐藏模态框');  // 添加调试日志
+                        };
+                        
+                        closeBtn.onclick = hideModal;
+                        cancelBtn.onclick = hideModal;
+                        confirmBtn.onclick = function() {
+                            // 填充表单
+                            document.getElementById('invoice_number').value = result.InvoiceNum || '';
+                            document.getElementById('amount').value = amount;
+                            document.getElementById('details').value = details;
+                            document.getElementById('remarks').value = result.Remarks || '';
+                            
+                            // 处理日期格式
+                            const dateMatch = result.InvoiceDate.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+                            if (dateMatch) {
+                                const [_, year, month, day] = dateMatch;
+                                const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                document.getElementById('invoice_date').value = formattedDate;
+                            }
+                            
+                            hideModal();
+                        };
+                    } else {
+                        alert('发票解析失败：' + (data.error_msg || '未知错误'));
+                    }
+                } catch (error) {
+                    alert('发票解析失败：' + error.message);
+                } finally {
+                    hideLoading();
+                }
+            };
+
+            reader.readAsDataURL(file);
         });
     }
 
-    invoiceTypeSelect.addEventListener('change', toggleTravelFields);
-    toggleTravelFields();
+    // 表单提交处理
+    const form = document.querySelector('form');
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        try {
+            showLoading();
+            
+            const formData = new FormData(this);
+            const response = await fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('服务器响应错误');
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(data.message);
+                window.location.href = data.redirect_url;
+            } else {
+                alert('保存失败：' + (data.error || '未知错误'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('保存失败：' + error.message);
+        } finally {
+            hideLoading();
+        }
+    });
 });
+
+// 定义座位类型映射
+const seatTypeOptions = {
+    TRAIN: [
+        { value: 'TRAIN_SECOND', text: '高铁二等座' },
+        { value: 'TRAIN_FIRST', text: '高铁一等座' },
+        { value: 'TRAIN_BUSINESS', text: '商务座' }
+    ],
+    PLANE: [
+        { value: 'PLANE_ECONOMY', text: '经济舱' },
+        { value: 'PLANE_BUSINESS', text: '商务舱' }
+    ]
+};
+
+// 更新座位类型选项
+function updateSeatTypeOptions(transportSelect) {
+    const transportItem = transportSelect.closest('.transport-item');
+    const seatTypeGroup = transportItem.querySelector('.seat-type-group');
+    const seatTypeSelect = transportItem.querySelector('.seat-type');
+    const transportType = transportSelect.value;
+
+    if (transportType === 'TRAIN' || transportType === 'PLANE') {
+        seatTypeGroup.style.display = 'block';
+        seatTypeSelect.required = true;
+        
+        // 清空现有选项
+        seatTypeSelect.innerHTML = '';
+        
+        // 添加新选项
+        seatTypeOptions[transportType].forEach(option => {
+            const optionElement = new Option(option.text, option.value);
+            seatTypeSelect.add(optionElement);
+        });
+    } else {
+        // 对于其他交通方式，隐藏座位类型选择
+        seatTypeGroup.style.display = 'none';
+        seatTypeSelect.required = false;
+    }
+}
+
+// 为现有和新增的交通明细项绑定事件
+function bindTransportTypeEvents(transportItem) {
+    const transportSelect = transportItem.querySelector('.transport-type');
+    transportSelect.addEventListener('change', function() {
+        updateSeatTypeOptions(this);
+    });
+    // 初始化座位类型选项
+    updateSeatTypeOptions(transportSelect);
+}
+
+// 加载提示函数
+function showLoading() {
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'loading-overlay';
+    loadingDiv.innerHTML = `
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">正在解析发票...</div>
+        </div>
+    `;
+    document.body.appendChild(loadingDiv);
+}
+
+function hideLoading() {
+    const loadingDiv = document.getElementById('loading-overlay');
+    if (loadingDiv) {
+        loadingDiv.remove();
+    }
+}
 </script>
 {% endblock %} 

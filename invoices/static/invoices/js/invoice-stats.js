@@ -275,9 +275,21 @@ window.addEventListener('resize', function() {
 });
 
 function showInvoiceDetail(invoiceId) {
-    fetch(`/manage/invoice/${invoiceId}/detail/`)
-        .then(response => response.json())
+    // 如果传入的是 ID 字符串，直接使用
+    const id = typeof invoiceId === 'object' ? invoiceId.invoice_id : invoiceId;
+    
+    fetch(`/manage/invoice/${id}/detail/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('发票不存在或已被删除');
+            }
+            return response.json();
+        })
         .then(data => {
+            if (!data) {
+                throw new Error('无法获取发票数据');
+            }
+            
             document.getElementById('detailInvoiceNumber').textContent = data.invoice_number;
             document.getElementById('detailInvoiceType').textContent = data.invoice_type_display;
             document.getElementById('detailExpenseType').textContent = data.expense_type;
@@ -286,21 +298,82 @@ function showInvoiceDetail(invoiceId) {
             document.getElementById('detailDate').textContent = data.invoice_date;
             document.getElementById('detailDetails').textContent = data.details || '无';
             document.getElementById('detailRemarks').textContent = data.remarks || '无';
-            document.getElementById('detailImage').src = data.image_url;
             
+            // 处理文件预览
+            const filePreviewDiv = document.getElementById('filePreview');
+            if (data.file_url) {
+                const fileExt = data.file_url.split('.').pop().toLowerCase();
+                
+                if (['jpg', 'jpeg', 'png'].includes(fileExt)) {
+                    filePreviewDiv.innerHTML = `
+                        <img src="${data.file_url}" alt="发票图片" style="max-width: 100%; max-height: 500px;">
+                    `;
+                } else if (fileExt === 'pdf') {
+                    filePreviewDiv.innerHTML = `
+                        <embed src="${data.file_url}" type="application/pdf" width="100%" height="500px">
+                        <p class="pdf-fallback" style="display: none;">
+                            <a href="${data.file_url}" target="_blank" class="btn btn-primary">
+                                <i class="fas fa-file-pdf"></i> 在新窗口打开 PDF
+                            </a>
+                        </p>
+                    `;
+                    
+                    const embed = filePreviewDiv.querySelector('embed');
+                    embed.onerror = function() {
+                        filePreviewDiv.querySelector('.pdf-fallback').style.display = 'block';
+                        embed.style.display = 'none';
+                    };
+                }
+            } else {
+                filePreviewDiv.innerHTML = `
+                    <div class="no-file-message">未上传发票文件</div>
+                `;
+            }
+
             document.getElementById('invoiceDetailModal').style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(error.message || '获取发票详情失败');
+            
+            // 如果是因为发票不存在，关闭模态框
+            const modal = document.getElementById('invoiceDetailModal');
+            if (modal.style.display === 'block') {
+                modal.style.display = 'none';
+            }
         });
 }
 
 function closeInvoiceDetail() {
-    document.getElementById('invoiceDetailModal').style.display = 'none';
+    const modal = document.getElementById('invoiceDetailModal');
+    if (modal) {
+        modal.style.display = 'none';
+        
+        // 清空文件预览区域
+        const filePreview = document.getElementById('filePreview');
+        if (filePreview) {
+            filePreview.innerHTML = '';
+        }
+    }
 }
 
 // 给表格行添加点击事件
 document.addEventListener('DOMContentLoaded', function() {
+    // 处理删除按钮点击
+    document.querySelectorAll('.btn-icon.delete').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();  // 阻止事件冒泡，避免触发行点击事件
+        });
+    });
+
+    // 给表格行添加点击事件
     const invoiceRows = document.querySelectorAll('tr[data-invoice-id]');
     invoiceRows.forEach(row => {
-        row.addEventListener('click', function() {
+        row.addEventListener('click', function(e) {
+            // 如果点击的是删除按钮或其父元素，不显示详情
+            if (e.target.closest('.btn-icon.delete')) {
+                return;
+            }
             const invoiceId = this.dataset.invoiceId;
             showInvoiceDetail(invoiceId);
         });

@@ -63,45 +63,54 @@
 </div>
 
 <div class="card">
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>发票号</th>
-                    <th>类型</th>
-                    <th>费用类型</th>
-                    <th>金额</th>
-                    <th>报销人</th>
-                    <th>发票日期</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for invoice in invoices %}
-                <tr data-invoice-id="{{ invoice.id }}">
-                    <td>{{ invoice.invoice_number }}</td>
-                    <td>{{ invoice.get_invoice_type_display }}</td>
-                    <td>{{ invoice.expense_type.name }}</td>
-                    <td>¥{{ invoice.amount|floatformat:2 }}</td>
-                    <td>{{ invoice.reimbursement_person }}</td>
-                    <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
-                    <td class="actions">
-                        <a href="{% url 'invoices:manage_invoice_edit' invoice.id %}" class="btn-icon" title="编辑">
-                            ✏️
-                        </a>
-                        <a href="{% url 'invoices:manage_invoice_delete' invoice.id %}" class="btn-icon delete" title="删除">
-                            🗑️
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" class="empty-message">暂无发票记录</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <form id="invoice-form" method="post" action="{% url 'invoices:manage_invoice_batch_delete' %}">
+        {% csrf_token %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="40">
+                            <input type="checkbox" id="select-all">
+                        </th>
+                        <th>发票号</th>
+                        <th>类型</th>
+                        <th>费用类型</th>
+                        <th>金额</th>
+                        <th>报销人</th>
+                        <th>发票日期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr data-invoice-id="{{ invoice.id }}">
+                        <td>
+                            <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}">
+                        </td>
+                        <td>{{ invoice.invoice_number }}</td>
+                        <td>{{ invoice.get_invoice_type_display }}</td>
+                        <td>{{ invoice.expense_type.name }}</td>
+                        <td>¥{{ invoice.amount|floatformat:2 }}</td>
+                        <td>{{ invoice.reimbursement_person }}</td>
+                        <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
+                        <td class="actions">
+                            <a href="{% url 'invoices:manage_invoice_edit' invoice.id %}" class="btn-icon" title="编辑">
+                                ✏️
+                            </a>
+                            <a href="{% url 'invoices:manage_invoice_delete' invoice.id %}" class="btn-icon delete" title="删除">
+                                🗑️
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="empty-message">暂无发票记录</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
 
     {% if is_paginated %}
     <div class="pagination">
@@ -122,22 +131,21 @@
     {% endif %}
 </div>
 
-<div class="list-footer">
-    <div class="summary-info">
-        <div class="total-amount">
-            <span class="label">筛选结果总金额：</span>
-            <span class="value">¥{{ total_amount|floatformat:2 }}</span>
-        </div>
+<div class="stats-bar">
+    <div class="stats-info">
+        <span class="amount-total">
+            发票金额总计：<strong>¥{{ total_amount|floatformat:2 }}</strong>
+        </span>
     </div>
-    <div class="action-buttons">
-        <button type="button" class="btn btn-chart" onclick="showPersonalStats()">
-            <span class="icon">📈</span>个人报销统计
+    <div class="stats-actions">
+        <button id="delete-btn" class="btn btn-danger" disabled>
+            <span class="icon">🗑️</span>删除
         </button>
-        <button type="button" class="btn btn-chart" onclick="showExpenseTypeStats()">
-            <span class="icon">📊</span>费用类型分析
+        <button class="btn btn-chart" onclick="showPersonalStats()">
+            <span class="icon">📊</span>个人报销统计
         </button>
-        <button type="button" class="btn btn-export">
-            <span class="icon">📥</span>导出Excel
+        <button class="btn btn-chart" onclick="showExpenseTypeStats()">
+            <span class="icon">📈</span>费用类型分析
         </button>
     </div>
 </div>
@@ -207,9 +215,11 @@
                         <div id="detailRemarks"></div>
                     </div>
                     <div class="detail-item full">
-                        <label>发票图片</label>
+                        <label>发票预览</label>
                         <div class="detail-image">
-                            <img id="detailImage" src="" alt="发票图片">
+                            <div id="filePreview">
+                                <!-- 文件预览区域将由 JavaScript 动态填充 -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -229,9 +239,33 @@
         </div>
     </div>
 </div>
+
+<!-- 批量删除确认模态框 -->
+<div id="batch-delete-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>确认批量删除</h3>
+            <button type="button" class="close-btn" onclick="closeBatchDeleteModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="confirm-delete">
+                <p class="warning">您确定要删除选中的发票吗？此操作不可恢复！</p>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-danger" onclick="confirmBatchDelete()">确认删除</button>
+                    <button type="button" class="btn" onclick="closeBatchDeleteModal()">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'invoices/css/manage/invoice-detail.css' %}">
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="{% static 'invoices/js/invoice-detail.js' %}"></script>
 <script src="{% static 'invoices/js/invoice-stats.js' %}"></script>
 {% endblock %} 

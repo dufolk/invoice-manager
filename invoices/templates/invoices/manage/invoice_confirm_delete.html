@@ -1,0 +1,23 @@
+{% extends 'invoices/manage/base.html' %}
+
+{% block title %}确认删除发票 - 发票管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>确认删除发票</h1>
+</div>
+
+<div class="card">
+    <div class="confirm-delete">
+        <form method="post" class="confirm-delete">
+            {% csrf_token %}
+            <h3>确认删除发票</h3>
+            <p class="warning">您确定要删除发票 "{{ invoice.invoice_number }}" 吗？此操作不可恢复！</p>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">确认删除</button>
+                <a href="{% url 'invoices:manage_invoice_list' %}" class="btn">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

@@ -1,8 +1,17 @@
 from django.db import models
+from django.core.validators import FileExtensionValidator
 
 class ExpenseType(models.Model):
     """费用类型模型"""
+    CATEGORY_CHOICES = [
+        ('DAILY', '日常费用'),
+        ('TRAVEL', '差旅费用'),
+        ('BOTH', '通用'),
+    ]
+    
     name = models.CharField(max_length=50, verbose_name='类型名称')
+    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='BOTH', 
+                              verbose_name='费用分类')
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, 
                               verbose_name='父类型')
 
@@ -18,21 +27,27 @@ class ExpenseType(models.Model):
 class Invoice(models.Model):
     """发票基础模型"""
     INVOICE_TYPES = [
-        ('DAILY', '日常'),
-        ('TRAVEL', '差旅'),
+        ('DAILY', '日常发票'),
+        ('TRAVEL', '差旅发票'),
     ]
     
-    invoice_number = models.CharField(max_length=50, unique=True, verbose_name='发票号')
-    invoice_type = models.CharField(max_length=10, choices=INVOICE_TYPES, verbose_name='发票类型')
-    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='发票金额')
+    invoice_number = models.CharField('发票号码', max_length=50, unique=True)
+    invoice_type = models.CharField('发票类型', max_length=10, choices=INVOICE_TYPES)
+    expense_type = models.ForeignKey(ExpenseType, on_delete=models.PROTECT, verbose_name='费用类型')
+    amount = models.DecimalField('金额', max_digits=10, decimal_places=2)
+    invoice_date = models.DateField('发票日期')
+    reimbursement_person = models.CharField('报销人', max_length=50)
     details = models.TextField('报销内容明细', blank=True)
     remarks = models.TextField('备注', blank=True)
-    invoice_date = models.DateField(verbose_name='发票日期')
-    image = models.ImageField(upload_to='invoice_images/', verbose_name='发票照片')
-    expense_type = models.ForeignKey(ExpenseType, on_delete=models.PROTECT, verbose_name='费用类型')
-    reimbursement_person = models.CharField(max_length=50, verbose_name='报销人')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    file = models.FileField(
+        '发票文件',
+        upload_to='invoices/%Y/%m/',
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])],
+        null=True,
+        blank=True
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
 
     class Meta:
         verbose_name = '发票'

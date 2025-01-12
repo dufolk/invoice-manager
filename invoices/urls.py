@@ -20,4 +20,6 @@ urlpatterns = [
     path('manage/stats/personal/', views.manage_personal_stats, name='manage_personal_stats'),
     path('manage/stats/expense-type/', views.manage_expense_type_stats, name='manage_expense_type_stats'),
     path('manage/invoice/<int:pk>/detail/', views.manage_invoice_detail, name='manage_invoice_detail'),
+    path('manage/invoices/batch-delete/', views.manage_invoice_batch_delete, name='manage_invoice_batch_delete'),
+    path('manage/parse-invoice/', views.parse_invoice, name='parse_invoice'),
 ] 

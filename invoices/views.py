@@ -12,6 +12,9 @@ from django.db.models import Q
 from django.db import transaction
 from django.http import JsonResponse
 from collections import defaultdict
+import tempfile
+from scripts.invoice_parser import get_invoice_info
+from django.urls import reverse
 
 def dashboard(request):
     # 基础统计数据
@@ -100,6 +103,10 @@ def admin_logout(request):
     return redirect('dashboard')
 
 def manage_login(request):
+    # 如果用户已登录，直接重定向到管理面板
+    if request.user.is_authenticated:
+        return redirect('invoices:manage_dashboard')
+        
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -107,16 +114,6 @@ def manage_login(request):
         
         if user is not None and user.is_staff:
             login(request, user)
-            # 如果用户没有设置全名，则使用用户名
-            if not user.get_full_name():
-                # 这里可以添加默认的昵称映射
-                nickname_map = {
-                    'hyouyu': '于沆佑',
-                    # 可以添加更多映射
-                }
-                if user.username in nickname_map:
-                    user.first_name = nickname_map[user.username]
-                    user.save()
             return redirect('invoices:manage_dashboard')
         else:
             messages.error(request, '用户名或密码错误')
@@ -199,17 +196,31 @@ def manage_invoice_list(request):
 
 @login_required
 def manage_invoice_add(request):
+    context = {
+        'expense_types': ExpenseType.objects.all(),
+        'invoice_type': 'DAILY'
+    }
+
     if request.method == 'POST':
         try:
+            # 检查发票号是否已存在
+            invoice_number = request.POST['invoice_number']
+            if Invoice.objects.filter(invoice_number=invoice_number).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': f'发票号 {invoice_number} 已存在'
+                })
+
             with transaction.atomic():
                 # 创建发票
                 invoice = Invoice.objects.create(
-                    invoice_number=request.POST['invoice_number'],
+                    invoice_number=invoice_number,
                     invoice_type=request.POST['invoice_type'],
                     amount=request.POST['amount'],
                     details=request.POST.get('details', ''),
+                    remarks=request.POST.get('remarks', ''),
                     invoice_date=request.POST['invoice_date'],
-                    image=request.FILES['image'],
+                    file=request.FILES['file'],
                     expense_type_id=request.POST['expense_type'],
                     reimbursement_person=request.POST['reimbursement_person']
                 )
@@ -222,17 +233,21 @@ def manage_invoice_add(request):
                         start_date=request.POST['start_date'],
                         end_date=request.POST['end_date'],
                         destination=request.POST['destination'],
-                        expense_category=request.POST['expense_category']
+                        expense_category=request.POST.get('expense_category', '')
                     )
 
-            messages.success(request, '发票添加成功')
-            return redirect('invoices:manage_invoice_list')
+            # 返回 JSON 响应
+            return JsonResponse({
+                'success': True,
+                'message': '发票添加成功！',
+                'redirect_url': reverse('invoices:manage_invoice_list')
+            })
         except Exception as e:
-            messages.error(request, f'发票添加失败：{str(e)}')
-            
-    context = {
-        'expense_types': ExpenseType.objects.all()
-    }
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+    
     return render(request, 'invoices/manage/invoice_form.html', context)
 
 @login_required
@@ -242,41 +257,60 @@ def manage_invoice_edit(request, pk):
     if request.method == 'POST':
         try:
             with transaction.atomic():
-                # 更新发票信息
+                # 更新基本信息
                 invoice.invoice_number = request.POST['invoice_number']
                 invoice.invoice_type = request.POST['invoice_type']
                 invoice.amount = request.POST['amount']
                 invoice.details = request.POST.get('details', '')
+                invoice.remarks = request.POST.get('remarks', '')
                 invoice.invoice_date = request.POST['invoice_date']
                 invoice.expense_type_id = request.POST['expense_type']
                 invoice.reimbursement_person = request.POST['reimbursement_person']
                 
-                if 'image' in request.FILES:
-                    invoice.image = request.FILES['image']
+                # 处理文件上传
+                if 'file' in request.FILES:
+                    invoice.file = request.FILES['file']
                 
                 invoice.save()
-
-                # 处理差旅信息
+                
+                # 如果是差旅发票，更新或创建差旅信息
                 if invoice.invoice_type == 'TRAVEL':
-                    travel_invoice, created = TravelInvoice.objects.get_or_create(invoice=invoice)
-                    travel_invoice.traveler = request.POST['traveler']
-                    travel_invoice.start_date = request.POST['start_date']
-                    travel_invoice.end_date = request.POST['end_date']
-                    travel_invoice.destination = request.POST['destination']
-                    travel_invoice.expense_category = request.POST['expense_category']
-                    travel_invoice.save()
-                else:
-                    TravelInvoice.objects.filter(invoice=invoice).delete()
-
-            messages.success(request, '发票更新成功')
-            return redirect('invoices:manage_invoice_list')
+                    travel_data = {
+                        'traveler': request.POST['traveler'],
+                        'start_date': request.POST['start_date'],
+                        'end_date': request.POST['end_date'],
+                        'destination': request.POST['destination'],
+                        'expense_category': request.POST.get('expense_category', '')
+                    }
+                    
+                    travel_invoice, created = TravelInvoice.objects.get_or_create(
+                        invoice=invoice,
+                        defaults=travel_data
+                    )
+                    
+                    if not created:
+                        for key, value in travel_data.items():
+                            setattr(travel_invoice, key, value)
+                        travel_invoice.save()
+                
+            return JsonResponse({
+                'success': True,
+                'message': '发票更新成功！',
+                'redirect_url': reverse('invoices:manage_invoice_list')
+            })
+            
         except Exception as e:
-            messages.error(request, f'发票更新失败：{str(e)}')
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
     
     context = {
         'invoice': invoice,
-        'expense_types': ExpenseType.objects.all()
+        'expense_types': ExpenseType.objects.all(),
+        'invoice_type': invoice.invoice_type
     }
+    
     return render(request, 'invoices/manage/invoice_form.html', context)
 
 @login_required
@@ -299,6 +333,7 @@ def manage_expense_type_add(request):
         try:
             ExpenseType.objects.create(
                 name=request.POST['name'],
+                category=request.POST['category'],
                 description=request.POST.get('description', '')
             )
             messages.success(request, '费用类型添加成功')
@@ -315,6 +350,7 @@ def manage_expense_type_edit(request, pk):
     if request.method == 'POST':
         try:
             expense_type.name = request.POST['name']
+            expense_type.category = request.POST['category']
             expense_type.description = request.POST.get('description', '')
             expense_type.save()
             messages.success(request, '费用类型更新成功')
@@ -424,6 +460,96 @@ def manage_invoice_detail(request, pk):
         'invoice_date': invoice.invoice_date.strftime('%Y-%m-%d'),
         'details': invoice.details,
         'remarks': invoice.remarks,
-        'image_url': invoice.image.url if invoice.image else '',
+        'file_url': invoice.file.url if invoice.file else '',
     }
     return JsonResponse(data)
+
+@login_required
+def manage_invoice_batch_delete(request):
+    if request.method == 'POST':
+        invoice_ids = request.POST.getlist('invoice_ids')
+        if invoice_ids:
+            try:
+                Invoice.objects.filter(id__in=invoice_ids).delete()
+                messages.success(request, f'成功删除 {len(invoice_ids)} 张发票')
+            except Exception as e:
+                messages.error(request, f'删除失败：{str(e)}')
+        return redirect('invoices:manage_invoice_list')
+    return redirect('invoices:manage_invoice_list')
+
+@login_required
+def parse_invoice(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '仅支持POST请求'})
+    
+    try:
+        base64_data = request.POST.get('file_data')
+        file_type = request.POST.get('file_type')
+        
+        if not base64_data or not file_type:
+            return JsonResponse({'success': False, 'error': '未收到完整的文件数据'})
+        
+        # 调用解析函数
+        result = get_invoice_info(base64_data, file_type)
+        parsed_data = json.loads(result)
+        
+        if 'words_result' in parsed_data:
+            return JsonResponse({
+                'success': True,
+                'words_result': parsed_data['words_result']
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error_msg': parsed_data.get('error_msg', '未知错误')
+            })
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error_msg': str(e)
+        })
+
+@login_required
+def manage_invoice_create(request):
+    if request.method == 'POST':
+        try:
+            # 获取基本发票信息
+            invoice_data = {
+                'invoice_number': request.POST.get('invoice_number'),
+                'invoice_type': request.POST.get('invoice_type'),
+                'expense_type_id': request.POST.get('expense_type'),
+                'amount': request.POST.get('amount'),
+                'invoice_date': request.POST.get('invoice_date'),
+                'reimbursement_person': request.POST.get('reimbursement_person'),
+                'details': request.POST.get('details'),
+                'remarks': request.POST.get('remarks'),
+            }
+            
+            # 创建发票记录
+            invoice = Invoice.objects.create(**invoice_data)
+            
+            # 处理上传的图片
+            if 'file' in request.FILES:
+                invoice.file = request.FILES['file']
+                invoice.save()
+            
+            # 如果是差旅发票，创建关联的差旅信息
+            if invoice.invoice_type == 'TRAVEL':
+                travel_data = {
+                    'invoice': invoice,
+                    'traveler': request.POST.get('traveler'),
+                    'start_date': request.POST.get('start_date'),
+                    'end_date': request.POST.get('end_date'),
+                    'destination': request.POST.get('destination'),
+                }
+                TravelInvoice.objects.create(**travel_data)
+            
+            messages.success(request, '发票添加成功！')
+            return JsonResponse({'success': True, 'message': '发票添加成功！'})
+            
+        except Exception as e:
+            messages.error(request, f'发票添加失败：{str(e)}')
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    # ... 其余代码保持不变 ...

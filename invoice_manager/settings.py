@@ -48,7 +48,6 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'invoice_manager.urls'
@@ -128,3 +127,10 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# 会话设置
+SESSION_COOKIE_AGE = 600  # 10分钟 = 600秒
+SESSION_SAVE_EVERY_REQUEST = True  # 每次请求都更新会话过期时间
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # 关闭浏览器时结束会话
+
+X_FRAME_OPTIONS = 'SAMEORIGIN'  # 允许同源页面嵌入

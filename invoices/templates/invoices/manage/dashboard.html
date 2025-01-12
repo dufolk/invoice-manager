@@ -27,15 +27,17 @@
 
 <div class="dashboard-grid">
     <div class="dashboard-card">
-        <h3>最近添加的发票</h3>
+        <h3>最近发票记录</h3>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>发票号</th>
                         <th>类型</th>
+                        <th>费用类型</th>
                         <th>金额</th>
-                        <th>日期</th>
+                        <th>报销人</th>
+                        <th>发票日期</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -43,12 +45,14 @@
                     <tr>
                         <td>{{ invoice.invoice_number }}</td>
                         <td>{{ invoice.get_invoice_type_display }}</td>
+                        <td>{{ invoice.expense_type.name }}</td>
                         <td>¥{{ invoice.amount|floatformat:2 }}</td>
+                        <td>{{ invoice.reimbursement_person }}</td>
                         <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="empty-message">暂无发票记录</td>
+                        <td colspan="6" class="empty-message">暂无发票记录</td>
                     </tr>
                     {% endfor %}
                 </tbody>
