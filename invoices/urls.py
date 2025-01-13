@@ -22,4 +22,7 @@ urlpatterns = [
     path('manage/invoice/<int:pk>/detail/', views.manage_invoice_detail, name='manage_invoice_detail'),
     path('manage/invoices/batch-delete/', views.manage_invoice_batch_delete, name='manage_invoice_batch_delete'),
     path('manage/parse-invoice/', views.parse_invoice, name='parse_invoice'),
+    path('manage/reimbursement/', views.manage_reimbursement_list, 
+         name='manage_reimbursement_list'),
+    path('manage/fund/', views.manage_fund_list, name='manage_fund_list'),
 ] 

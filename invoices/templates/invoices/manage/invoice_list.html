@@ -83,12 +83,26 @@
                 </thead>
                 <tbody>
                     {% for invoice in invoices %}
-                    <tr data-invoice-id="{{ invoice.id }}">
+                    <tr data-invoice-id="{{ invoice.id }}" {% if invoice.has_potential_issue %}class="has-issue"{% endif %}>
                         <td>
                             <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}">
                         </td>
                         <td>{{ invoice.invoice_number }}</td>
-                        <td>{{ invoice.get_invoice_type_display }}</td>
+                        <td>
+                            {{ invoice.get_invoice_type_display }}
+                            {% if invoice.has_potential_issue %}
+                            <span class="issue-icon" title="可能存在问题：
+                                {% if invoice.invoice_type == 'DAILY' %}
+                                    金额超过1000元（当前金额：¥{{ invoice.amount|floatformat:2 }}）且无附件
+                                {% else %}
+                                    {% if invoice.travelinvoice.expense_category == 'TRANSPORT' and invoice.travelinvoice.transport_type == 'BUS' %}
+                                        汽车交通费无附件
+                                    {% endif %}
+                                {% endif %}">
+                                ⚠️
+                            </span>
+                            {% endif %}
+                        </td>
                         <td>{{ invoice.expense_type.name }}</td>
                         <td>¥{{ invoice.amount|floatformat:2 }}</td>
                         <td>{{ invoice.reimbursement_person }}</td>
@@ -188,7 +202,10 @@
                     </div>
                     <div class="detail-item">
                         <label>发票类型</label>
-                        <div id="detailInvoiceType"></div>
+                        <div class="type-container">
+                            <span id="detailInvoiceType"></span>
+                            <span id="detailIssue" class="issue-icon"></span>
+                        </div>
                     </div>
                     <div class="detail-item">
                         <label>费用类型</label>
@@ -220,6 +237,12 @@
                             <div id="filePreview">
                                 <!-- 文件预览区域将由 JavaScript 动态填充 -->
                             </div>
+                        </div>
+                    </div>
+                    <div class="detail-item full">
+                        <label>附件</label>
+                        <div id="attachmentInfo">
+                            <!-- 附件信息将由 JavaScript 动态填充 -->
                         </div>
                     </div>
                 </div>

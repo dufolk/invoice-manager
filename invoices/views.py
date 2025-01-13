@@ -216,7 +216,7 @@ def manage_invoice_add(request):
                 invoice = Invoice.objects.create(
                     invoice_number=invoice_number,
                     invoice_type=request.POST['invoice_type'],
-                    amount=request.POST['amount'],
+                    amount=float(request.POST['amount']),
                     details=request.POST.get('details', ''),
                     remarks=request.POST.get('remarks', ''),
                     invoice_date=request.POST['invoice_date'],
@@ -224,10 +224,22 @@ def manage_invoice_add(request):
                     expense_type_id=request.POST['expense_type'],
                     reimbursement_person=request.POST['reimbursement_person']
                 )
-
+                
+                # 处理发票文件上传
+                if 'file' in request.FILES:
+                    invoice.file = request.FILES['file']
+                
+                # 处理附件上传
+                if 'attachment' in request.FILES:
+                    invoice.attachment = request.FILES['attachment']
+                
+                # 检查是否可能存在问题
+                invoice.check_potential_issues()
+                invoice.save()
+                
                 # 如果是差旅发票，创建关联的差旅信息
                 if invoice.invoice_type == 'TRAVEL':
-                    TravelInvoice.objects.create(
+                    travel_invoice = TravelInvoice.objects.create(
                         invoice=invoice,
                         traveler=request.POST['traveler'],
                         start_date=request.POST['start_date'],
@@ -235,6 +247,9 @@ def manage_invoice_add(request):
                         destination=request.POST['destination'],
                         expense_category=request.POST.get('expense_category', '')
                     )
+                    # 重新检查问题（因为现在有了差旅信息）
+                    invoice.check_potential_issues()
+                    invoice.save()
 
             # 返回 JSON 响应
             return JsonResponse({
@@ -260,17 +275,22 @@ def manage_invoice_edit(request, pk):
                 # 更新基本信息
                 invoice.invoice_number = request.POST['invoice_number']
                 invoice.invoice_type = request.POST['invoice_type']
-                invoice.amount = request.POST['amount']
+                invoice.amount = float(request.POST['amount'])
                 invoice.details = request.POST.get('details', '')
                 invoice.remarks = request.POST.get('remarks', '')
                 invoice.invoice_date = request.POST['invoice_date']
                 invoice.expense_type_id = request.POST['expense_type']
                 invoice.reimbursement_person = request.POST['reimbursement_person']
                 
-                # 处理文件上传
+                # 处理发票文件上传
                 if 'file' in request.FILES:
                     invoice.file = request.FILES['file']
                 
+                # 处理附件上传
+                if 'attachment' in request.FILES:
+                    invoice.attachment = request.FILES['attachment']
+                # 检查是否可能存在问题
+                invoice.check_potential_issues()
                 invoice.save()
                 
                 # 如果是差旅发票，更新或创建差旅信息
@@ -292,6 +312,10 @@ def manage_invoice_edit(request, pk):
                         for key, value in travel_data.items():
                             setattr(travel_invoice, key, value)
                         travel_invoice.save()
+                    
+                    # 重新检查问题（因为差旅信息可能已更新）
+                    invoice.check_potential_issues()
+                    invoice.save()
                 
             return JsonResponse({
                 'success': True,
@@ -453,14 +477,18 @@ def manage_invoice_detail(request, pk):
     invoice = get_object_or_404(Invoice, pk=pk)
     data = {
         'invoice_number': invoice.invoice_number,
+        'invoice_type': invoice.invoice_type,
         'invoice_type_display': invoice.get_invoice_type_display(),
         'expense_type': invoice.expense_type.name,
         'amount': float(invoice.amount),
+        'invoice_date': invoice.invoice_date,
         'reimbursement_person': invoice.reimbursement_person,
-        'invoice_date': invoice.invoice_date.strftime('%Y-%m-%d'),
         'details': invoice.details,
         'remarks': invoice.remarks,
         'file_url': invoice.file.url if invoice.file else '',
+        'attachment_url': invoice.attachment.url if invoice.attachment else '',
+        'attachment_name': invoice.attachment.name.split('/')[-1] if invoice.attachment else '',
+        'has_potential_issue': invoice.has_potential_issue,
     }
     return JsonResponse(data)
 
@@ -553,3 +581,11 @@ def manage_invoice_create(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     # ... 其余代码保持不变 ...
+
+@login_required
+def manage_reimbursement_list(request):
+    return render(request, 'invoices/manage/reimbursement_list.html')
+
+@login_required
+def manage_fund_list(request):
+    return render(request, 'invoices/manage/fund_list.html')

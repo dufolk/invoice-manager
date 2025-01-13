@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import FileExtensionValidator
+from django.utils import timezone
 
 class ExpenseType(models.Model):
     """费用类型模型"""
@@ -26,6 +27,13 @@ class Invoice(models.Model):
         ('TRAVEL', '差旅发票'),
     ]
     
+    REIMBURSEMENT_STATUS = [
+        ('NOT_SUBMITTED', '未提交'),
+        ('PENDING', '未报销'),
+        ('NOT_TRANSFERRED', '未转入管理员账户'),
+        ('TRANSFERRED', '已转入管理员账户'),
+    ]
+    
     invoice_number = models.CharField('发票号码', max_length=50, unique=True)
     invoice_type = models.CharField('发票类型', max_length=10, choices=INVOICE_TYPES)
     expense_type = models.ForeignKey(ExpenseType, on_delete=models.PROTECT, verbose_name='费用类型')
@@ -41,6 +49,30 @@ class Invoice(models.Model):
         null=True,
         blank=True
     )
+    attachment = models.FileField(
+        '附件',
+        upload_to='attachments/%Y/%m/',
+        null=True,
+        blank=True,
+        help_text='可上传任意类型的附件文件'
+    )
+    has_potential_issue = models.BooleanField(
+        '可能存在问题',
+        default=False,
+        help_text='日常发票金额超过1000且无附件，或差旅发票为汽车交通费且无附件时，标记为可能存在问题'
+    )
+    reimbursement_status = models.CharField(
+        '报销状态',
+        max_length=20,
+        choices=REIMBURSEMENT_STATUS,
+        default='NOT_SUBMITTED',
+        help_text='发票的报销处理状态'
+    )
+    status_remarks = models.TextField(
+        '状态备注',
+        blank=True,
+        help_text='当状态为"未转入管理员账户"时的说明'
+    )
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
 
@@ -50,6 +82,21 @@ class Invoice(models.Model):
 
     def __str__(self):
         return f"{self.invoice_number} - {self.reimbursement_person}"
+
+    def check_potential_issues(self):
+        """检查发票是否可能存在问题"""
+        if not self.attachment:  # 无附件时
+            if self.invoice_type == 'DAILY' and float(self.amount) > 1000:
+                self.has_potential_issue = True
+            elif (self.invoice_type == 'TRAVEL' and 
+                  hasattr(self, 'travelinvoice') and 
+                  self.travelinvoice.expense_category == 'TRANSPORT' and
+                  self.travelinvoice.transport_type == 'BUS'):
+                self.has_potential_issue = True
+            else:
+                self.has_potential_issue = False
+        else:
+            self.has_potential_issue = False
 
 class TravelInvoice(models.Model):
     """差旅发票扩展信息"""
@@ -123,3 +170,69 @@ class AccommodationDetail(models.Model):
 
     def __str__(self):
         return f"{self.hotel_name}: {self.check_in_date} - {self.check_out_date}"
+
+class FundRecord(models.Model):
+    """经费流水记录"""
+    RECORD_TYPES = [
+        ('INCOME', '收入'),
+        ('EXPENSE', '支出'),
+    ]
+    
+    amount = models.DecimalField('金额变动', max_digits=10, decimal_places=2,
+                                help_text='正值表示收入，负值表示支出')
+    balance = models.DecimalField('变动后余额', max_digits=10, decimal_places=2,
+                                help_text='经费变动后的余额',
+                                default=0)
+    record_type = models.CharField('变动类型', max_length=10, choices=RECORD_TYPES)
+    description = models.TextField('变动说明')
+    record_date = models.DateField('变动日期', 
+                                  help_text='实际经费变动的日期',
+                                  default=timezone.now)
+    created_at = models.DateTimeField('记录时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '经费流水'
+        verbose_name_plural = verbose_name
+        ordering = ['-record_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.record_date} {self.get_record_type_display()}: {self.amount}"
+
+    def save(self, *args, **kwargs):
+        # 如果是新记录，自动计算余额
+        if not self.pk:
+            # 获取最新的记录
+            latest_record = FundRecord.objects.order_by('-record_date', '-created_at').first()
+            previous_balance = latest_record.balance if latest_record else 0
+            self.balance = previous_balance + self.amount
+        super().save(*args, **kwargs)
+
+class ReimbursementRecord(models.Model):
+    """报账记录"""
+    RECORD_TYPES = [
+        ('DAILY', '日常报销'),
+        ('TRAVEL', '差旅报销'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('SUBMITTED', '已提交'),
+        ('COMPLETED', '已报账'),
+    ]
+    
+    reimbursement_date = models.DateTimeField('报账时间')
+    invoices = models.ManyToManyField(Invoice, verbose_name='关联发票')
+    record_type = models.CharField('报账类型', max_length=10, choices=RECORD_TYPES)
+    status = models.CharField('报账状态', max_length=10, choices=STATUS_CHOICES, 
+                             default='SUBMITTED')
+    remarks = models.TextField('备注', blank=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '报账记录'
+        verbose_name_plural = verbose_name
+        ordering = ['-reimbursement_date']
+
+    def __str__(self):
+        return f"{self.get_record_type_display()} - {self.reimbursement_date}"

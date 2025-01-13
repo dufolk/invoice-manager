@@ -1365,14 +1365,14 @@ table th:nth-child(8) {  /* 操作列 */
 .file-upload-group {
     display: flex;
     gap: 10px;
-    align-items: stretch;  /* 改为 stretch 使子元素等高 */
+    align-items: stretch;
     width: 100%;
 }
 
 .file-upload-group input[type="file"] {
     flex: 1;
     min-width: 200px;
-    height: 40px;  /* 固定高度 */
+    height: 40px;
     padding: 8px;
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(0, 198, 255, 0.2);
@@ -1380,10 +1380,11 @@ table th:nth-child(8) {  /* 操作列 */
     color: #7EAEFF;
 }
 
-#parse-btn {
-    width: 70px;  /* 固定宽度 */
-    height: 40px;  /* 与文件上传框同高 */
-    padding: 0;
+/* 文件上传组中的按钮通用样式 */
+.file-upload-group .btn {
+    white-space: nowrap;
+    height: 40px;
+    padding: 0 15px;
     font-size: 14px;
     display: inline-flex;
     align-items: center;
@@ -1393,15 +1394,148 @@ table th:nth-child(8) {  /* 操作列 */
     border: 1px solid rgba(0, 198, 255, 0.3);
 }
 
-#parse-btn:hover {
+#parse-btn {
+    min-width: 70px;
+}
+
+.file-upload-group .btn:hover {
     background: rgba(0, 198, 255, 0.3);
 }
 
-#parse-btn .icon {
+.file-upload-group .btn-link {
+    min-width: 120px;
+    color: #00C6FF;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.file-upload-group .btn .icon {
     font-size: 14px;
+    flex-shrink: 0;
 }
 
 /* 所有下拉框选项的统一样式 */
 select option {
     color: #000000;
+}
+
+.issue-icon {
+    display: inline-block;
+    font-size: 12px;
+    color: #FFB020;
+    margin-left: 4px;
+    opacity: 0.7;
+    cursor: help;
+    position: relative;
+}
+
+tr:hover .issue-icon {
+    opacity: 1;
+}
+
+/* 优化 tooltip 样式 */
+.issue-icon:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    background: rgba(50, 50, 50, 0.95);
+    color: #fff;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-top: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* 添加小箭头 */
+.issue-icon:hover::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: rgba(50, 50, 50, 0.95);
+    margin-top: -5px;
+    z-index: 1001;
+}
+
+.file-upload-group {
+    margin-bottom: 10px;
+}
+
+.file-upload-group .btn-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 15px;
+    background: rgba(0, 198, 255, 0.1);
+    border-radius: 4px;
+    color: #00C6FF;
+    text-decoration: none;
+    transition: all 0.3s;
+    width: auto;
+    min-width: 120px;
+    white-space: nowrap;
+}
+
+.file-upload-group .btn-link:hover {
+    background: rgba(0, 198, 255, 0.2);
+    box-shadow: 0 0 15px rgba(0, 198, 255, 0.3);
+}
+
+.file-upload-group .btn-link .icon {
+    flex-shrink: 0;
+}
+
+/* 表格样式 */
+.table-container {
+    margin-top: 20px;
+    overflow-x: auto;
+}
+
+/* 可能存在问题的发票行样式 */
+tr.has-issue {
+    background: rgba(255, 176, 32, 0.05);
+}
+
+tr.has-issue:hover {
+    background: rgba(255, 176, 32, 0.1);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(13, 25, 76, 0.5);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table th,
+.table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(0, 198, 255, 0.1);
+}
+
+.table tbody tr:hover {
+    background: rgba(0, 198, 255, 0.1);
+}
+
+.issue-icon {
+    display: inline-block;
+    font-size: 12px;
+    color: #FFB020;
+    margin-left: 4px;
+    opacity: 0.7;
+    cursor: help;
+    position: relative;
+}
+
+tr:hover .issue-icon {
+    opacity: 1;
 }

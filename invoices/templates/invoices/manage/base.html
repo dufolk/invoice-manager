@@ -23,6 +23,12 @@
             <li><a href="{% url 'invoices:manage_invoice_list' %}" class="{% if 'invoice' in request.resolver_match.url_name %}active{% endif %}">
                 <span class="icon">📄</span>发票管理
             </a></li>
+            <li><a href="{% url 'invoices:manage_reimbursement_list' %}" class="{% if request.resolver_match.url_name == 'manage_reimbursement_list' %}active{% endif %}">
+                <span class="icon">📊</span>报账管理
+            </a></li>
+            <li><a href="{% url 'invoices:manage_fund_list' %}" class="{% if request.resolver_match.url_name == 'manage_fund_list' %}active{% endif %}">
+                <span class="icon">💰</span>经费管理
+            </a></li>
             <li><a href="{% url 'invoices:manage_expense_type_list' %}" class="{% if 'expense_type' in request.resolver_match.url_name %}active{% endif %}">
                 <span class="icon">📁</span>费用类型
             </a></li>

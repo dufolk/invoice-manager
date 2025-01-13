@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import ExpenseType, Invoice, TravelInvoice, TransportDetail, AccommodationDetail
+from .models import (
+    Invoice, ExpenseType, TravelInvoice, 
+    TransportDetail, AccommodationDetail,
+    FundRecord, ReimbursementRecord
+)
 
 @admin.register(ExpenseType)
 class ExpenseTypeAdmin(admin.ModelAdmin):
@@ -71,3 +75,18 @@ class AccommodationDetailAdmin(admin.ModelAdmin):
         return obj.travel_invoice.invoice.invoice_number
     get_invoice_number.short_description = '发票号'
     get_invoice_number.admin_order_field = 'travel_invoice__invoice__invoice_number'
+
+@admin.register(FundRecord)
+class FundRecordAdmin(admin.ModelAdmin):
+    list_display = ('record_date', 'record_type', 'amount', 'balance', 'description')
+    list_filter = ('record_type', 'record_date')
+    search_fields = ('description',)
+    date_hierarchy = 'record_date'
+    readonly_fields = ('balance',)
+
+@admin.register(ReimbursementRecord)
+class ReimbursementRecordAdmin(admin.ModelAdmin):
+    list_display = ('record_type', 'reimbursement_date', 'status')
+    list_filter = ('record_type', 'status', 'reimbursement_date')
+    search_fields = ('remarks',)
+    filter_horizontal = ('invoices',)

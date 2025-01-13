@@ -84,6 +84,7 @@
 }
 
 .no-file-message {
+    white-space: nowrap;
     position: static;
     top: auto;
     left: auto;
@@ -116,4 +117,65 @@
 /* 当发票是竖向时的样式 */
 .detail-image.portrait {
     padding-bottom: 141.4%;  /* A4纸竖向比例 */
+}
+
+.attachment-link {
+    padding: 10px;
+    color: #fff;
+}
+
+.attachment-link .btn-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #00C6FF;
+    text-decoration: none;
+    padding: 2px 10px;
+    background: rgba(0, 198, 255, 0.1);
+    border-radius: 4px;
+    transition: all 0.3s;
+    margin-left: 8px;
+}
+
+.attachment-link .btn-link:hover {
+    background: rgba(0, 198, 255, 0.2);
+    box-shadow: 0 0 15px rgba(0, 198, 255, 0.3);
+}
+
+.no-attachment-message {
+    padding: 20px;
+    color: #7EAEFF;
+    text-align: center;
+    background: rgba(13, 25, 76, 0.3);
+    border-radius: 4px;
+}
+
+.help-text {
+    font-size: 12px;
+    color: #7EAEFF;
+    margin-top: 5px;
+}
+
+.type-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.issue-icon {
+    display: inline-block;
+    font-size: 12px;
+    color: #FFB020;
+    margin-left: 4px;
+    opacity: 0.7;
+    cursor: help;
+    display: none;
+}
+
+.issue-icon.visible {
+    display: inline-block;
+}
+
+tr:hover .issue-icon {
+    opacity: 1;
 } 
