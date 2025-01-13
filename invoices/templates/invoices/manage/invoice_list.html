@@ -94,7 +94,7 @@
                         <td>{{ invoice.reimbursement_person }}</td>
                         <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
                         <td class="actions">
-                            <a href="{% url 'invoices:manage_invoice_edit' invoice.id %}" class="btn-icon" title="编辑">
+                            <a href="{% url 'invoices:manage_invoice_edit' invoice.id %}" class="btn-icon" title="编辑" onclick="window.location.href=this.href; return false;">
                                 ✏️
                             </a>
                             <a href="{% url 'invoices:manage_invoice_delete' invoice.id %}" class="btn-icon delete" title="删除">
@@ -263,9 +263,34 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'invoices/css/manage/invoice-detail.css' %}">
+<style>
+    #statsChart,
+    #expenseTypeChart {
+        width: 100%;
+        height: 400px;
+        min-height: 400px;
+        background: transparent;
+    }
+    
+    .modal-content {
+        min-width: 600px;
+        max-width: 80%;
+    }
+    
+    .stats-search {
+        margin-bottom: 20px;
+    }
+    
+    .no-data-tip {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script src="{% static 'invoices/js/invoice-detail.js' %}"></script>
 <script src="{% static 'invoices/js/invoice-stats.js' %}"></script>
 {% endblock %} 

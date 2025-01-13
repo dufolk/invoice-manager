@@ -38,11 +38,26 @@
     {% endif %}
 
     {% if messages %}
-    <div class="messages">
+    <div class="messages-container">
         {% for message in messages %}
-        <div class="message {{ message.tags }}">{{ message }}</div>
+        <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
         {% endfor %}
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1s 后自动隐藏消息
+            const messages = document.querySelectorAll('.message');
+            messages.forEach(function(message) {
+                setTimeout(function() {
+                    message.style.opacity = '0';
+                    setTimeout(function() {
+                        message.remove();
+                    }, 1000);
+                }, 1000);
+            });
+        });
+    </script>
     {% endif %}
     
     <main class="main-content {% if user.is_authenticated and not hide_nav %}with-sidebar{% endif %}">

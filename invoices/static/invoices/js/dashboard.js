@@ -120,7 +120,13 @@ expenseTypeChart.setOption({
         center: ['50%', '50%'],
         data: expenseTypeData,
         label: {
-            color: '#7EAEFF'
+            color: '#FFFFFF',
+            show: true,
+            formatter: '{b}',
+            position: 'inner',
+            fontSize: 13,
+            fontWeight: 500,
+            textShadow: '0 1px 2px rgba(0,0,0,0.2)'
         },
         itemStyle: {
             borderColor: '#081449',
@@ -130,6 +136,12 @@ expenseTypeChart.setOption({
             itemStyle: {
                 shadowBlur: 20,
                 shadowColor: 'rgba(0, 198, 255, 0.5)'
+            },
+            label: {
+                show: true,
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: '#FFFFFF'
             }
         }
     }]

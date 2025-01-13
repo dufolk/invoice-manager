@@ -4,45 +4,112 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>费用类型管理</h1>
-    <div class="page-actions">
-        <a href="{% url 'invoices:manage_expense_type_add' %}" class="btn btn-primary">
-            <span class="icon">➕</span>新建费用类型
-        </a>
+    <h1>费用类型</h1>
+</div>
+
+<div class="expense-type-container">
+    <div class="expense-type-section">
+        <h2 class="section-title">日常发票费用类型</h2>
+        <div class="type-list">
+            <div class="type-item">
+                <span class="type-icon">📚</span>
+                <span class="type-name">书报杂志订阅费</span>
+            </div>
+            <div class="type-item">
+                <span class="type-icon">🖨️</span>
+                <span class="type-name">印刷费</span>
+            </div>
+            <div class="type-item">
+                <span class="type-icon">📬</span>
+                <span class="type-name">邮寄费</span>
+            </div>
+            <div class="type-item">
+                <span class="type-icon">🔧</span>
+                <span class="type-name">仪器设备维修费</span>
+            </div>
+            <div class="type-item">
+                <span class="type-icon">👥</span>
+                <span class="type-name">会议费</span>
+            </div>
+            <div class="type-item">
+                <span class="type-icon">🧪</span>
+                <span class="type-name">专用材料费</span>
+            </div>
+            <div class="type-item">
+                <span class="type-icon">🚗</span>
+                <span class="type-name">交通费</span>
+            </div>
+            <div class="type-item">
+                <span class="type-icon">📝</span>
+                <span class="type-name">其他</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="expense-type-section">
+        <h2 class="section-title">差旅发票费用类型</h2>
+        <div class="type-list">
+            <div class="type-item">
+                <span class="type-icon">🚅</span>
+                <span class="type-name">交通费</span>
+            </div>
+            <div class="type-item">
+                <span class="type-icon">🏨</span>
+                <span class="type-name">住宿费</span>
+            </div>
+            <div class="type-item">
+                <span class="type-icon">📝</span>
+                <span class="type-name">其他</span>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="expense-type-grid">
-    {% for expense_type in expense_types %}
-    <div class="expense-type-card">
-        <div class="expense-type-content">
-            <div class="expense-type-icon">📁</div>
-            <h3 class="expense-type-name">{{ expense_type.name }}</h3>
-            <p class="expense-type-desc">{{ expense_type.description|default:'暂无描述' }}</p>
-            <div class="expense-type-meta">
-                <span class="meta-item">
-                    <span class="meta-icon">📅</span>
-                    {{ expense_type.created_at|date:"Y-m-d" }}
-                </span>
-            </div>
-        </div>
-        <div class="expense-type-actions">
-            <a href="{% url 'invoices:manage_expense_type_edit' expense_type.id %}" class="action-btn edit" title="编辑">
-                <span class="action-icon">✏️</span>
-                编辑
-            </a>
-            <a href="{% url 'invoices:manage_expense_type_delete' expense_type.id %}" class="action-btn delete" title="删除">
-                <span class="action-icon">🗑️</span>
-                删除
-            </a>
-        </div>
-    </div>
-    {% empty %}
-    <div class="empty-state">
-        <div class="empty-icon">📂</div>
-        <h3>暂无费用类型</h3>
-        <p>点击右上角的"新建费用类型"按钮创建第一个费用类型</p>
-    </div>
-    {% endfor %}
-</div>
+<style>
+.expense-type-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.expense-type-section {
+    background: rgba(13, 25, 76, 0.8);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(0, 198, 255, 0.1);
+}
+
+.section-title {
+    color: #00C6FF;
+    font-size: 18px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 198, 255, 0.2);
+}
+
+.type-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.type-item {
+    background: rgba(0, 198, 255, 0.1);
+    padding: 8px 15px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(0, 198, 255, 0.2);
+}
+
+.type-icon {
+    font-size: 16px;
+}
+
+.type-name {
+    color: #7EAEFF;
+    font-size: 14px;
+}
+</style>
 {% endblock %} 

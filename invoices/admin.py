@@ -3,9 +3,9 @@ from .models import ExpenseType, Invoice, TravelInvoice, TransportDetail, Accomm
 
 @admin.register(ExpenseType)
 class ExpenseTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'parent')
+    list_display = ('name', 'category')
     search_fields = ('name',)
-    list_filter = ('parent',)
+    list_filter = ('category',)
 
 class TransportDetailInline(admin.TabularInline):
     model = TransportDetail

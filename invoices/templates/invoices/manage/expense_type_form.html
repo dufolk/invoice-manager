@@ -22,13 +22,7 @@
                 <select id="category" name="category" required>
                     <option value="DAILY" {% if expense_type.category == 'DAILY' %}selected{% endif %}>日常费用</option>
                     <option value="TRAVEL" {% if expense_type.category == 'TRAVEL' %}selected{% endif %}>差旅费用</option>
-                    <option value="BOTH" {% if expense_type.category == 'BOTH' %}selected{% endif %}>通用</option>
                 </select>
-            </div>
-
-            <div class="form-group full-width">
-                <label for="description">描述</label>
-                <textarea id="description" name="description" rows="4">{{ expense_type.description|default:'' }}</textarea>
             </div>
         </div>
 

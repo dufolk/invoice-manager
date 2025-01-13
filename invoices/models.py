@@ -6,22 +6,17 @@ class ExpenseType(models.Model):
     CATEGORY_CHOICES = [
         ('DAILY', '日常费用'),
         ('TRAVEL', '差旅费用'),
-        ('BOTH', '通用'),
     ]
     
     name = models.CharField(max_length=50, verbose_name='类型名称')
-    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='BOTH', 
+    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='DAILY', 
                               verbose_name='费用分类')
-    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, 
-                              verbose_name='父类型')
 
     class Meta:
         verbose_name = '费用类型'
         verbose_name_plural = verbose_name
 
     def __str__(self):
-        if self.parent:
-            return f"{self.parent.name} - {self.name}"
         return self.name
 
 class Invoice(models.Model):

@@ -20,6 +20,7 @@
             <div class="form-group">
                 <label for="invoice_type">发票类型*</label>
                 <select id="invoice_type" name="invoice_type" required>
+                    <option value="">请选择发票类型</option>
                     <option value="DAILY" {% if invoice.invoice_type == 'DAILY' %}selected{% endif %}>日常发票</option>
                     <option value="TRAVEL" {% if invoice.invoice_type == 'TRAVEL' %}selected{% endif %}>差旅发票</option>
                 </select>
@@ -28,11 +29,20 @@
             <div class="form-group">
                 <label for="expense_type">费用类型*</label>
                 <select id="expense_type" name="expense_type" required>
+                    <option value="">请选择费用类型</option>
                     {% for type in expense_types %}
-                        {% if invoice_type == 'DAILY' and type.category != 'TRAVEL' or invoice_type == 'TRAVEL' and type.category != 'DAILY' %}
-                            <option value="{{ type.id }}" {% if invoice.expense_type_id == type.id %}selected{% endif %}>
-                                {{ type.name }}
-                            </option>
+                        {% if invoice %}
+                            {% if invoice.invoice_type == 'DAILY' and type.category != 'TRAVEL' or invoice.invoice_type == 'TRAVEL' and type.category != 'DAILY' %}
+                                <option value="{{ type.id }}" {% if invoice.expense_type_id == type.id %}selected{% endif %}>
+                                    {{ type.name }}
+                                </option>
+                            {% endif %}
+                        {% else %}
+                            {% if invoice_type == 'DAILY' and type.category != 'TRAVEL' or invoice_type == 'TRAVEL' and type.category != 'DAILY' %}
+                                <option value="{{ type.id }}" {% if invoice.expense_type_id == type.id %}selected{% endif %}>
+                                    {{ type.name }}
+                                </option>
+                            {% endif %}
                         {% endif %}
                     {% endfor %}
                 </select>
@@ -67,10 +77,10 @@
             </div>
 
             <div class="form-group">
-                <label for="file">发票文件*</label>
+                <label for="file">发票文件</label>
                 <div class="file-upload-group">
                     {% csrf_token %}
-                    <input type="file" id="file" name="file" accept="image/*,application/pdf" required>
+                    <input type="file" id="file" name="file" accept="image/*,application/pdf" {% if not invoice %}required{% endif %}>
                     <button type="button" id="parse-btn" class="btn btn-primary">
                         <span class="icon">📄</span>解析
                     </button>
@@ -294,6 +304,42 @@ document.addEventListener('DOMContentLoaded', function() {
         transportItems.forEach(bindTransportTypeEvents);
     }
 
+    // 表单提交处理
+    const form = document.querySelector('form');
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        try {
+            showLoading('正在保存...');  // 修改加载提示文本
+            
+            const formData = new FormData(this);
+            const response = await fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('服务器响应错误');
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                window.location.href = data.redirect_url;
+            } else {
+                alert('保存失败：' + (data.error || '未知错误'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('保存失败：' + error.message);
+        } finally {
+            hideLoading();
+        }
+    });
+
     // 解析按钮点击事件
     const parseBtn = document.getElementById('parse-btn');
 
@@ -320,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const base64Data = e.target.result.split(',')[1];
                 
                 try {
-                    showLoading();
+                    showLoading('正在解析发票...');  // 修改加载提示文本
 
                     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
                     const formData = new FormData();
@@ -411,43 +457,6 @@ document.addEventListener('DOMContentLoaded', function() {
             reader.readAsDataURL(file);
         });
     }
-
-    // 表单提交处理
-    const form = document.querySelector('form');
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        try {
-            showLoading();
-            
-            const formData = new FormData(this);
-            const response = await fetch(this.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('服务器响应错误');
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                alert(data.message);
-                window.location.href = data.redirect_url;
-            } else {
-                alert('保存失败：' + (data.error || '未知错误'));
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('保存失败：' + error.message);
-        } finally {
-            hideLoading();
-        }
-    });
 });
 
 // 定义座位类型映射
@@ -500,13 +509,13 @@ function bindTransportTypeEvents(transportItem) {
 }
 
 // 加载提示函数
-function showLoading() {
+function showLoading(text = '加载中...') {
     const loadingDiv = document.createElement('div');
     loadingDiv.id = 'loading-overlay';
     loadingDiv.innerHTML = `
         <div class="loading-content">
             <div class="loading-spinner"></div>
-            <div class="loading-text">正在解析发票...</div>
+            <div class="loading-text">${text}</div>
         </div>
     `;
     document.body.appendChild(loadingDiv);

@@ -11,5 +11,4 @@
 *.sqlite3
 *.pyc
 config.py
-__pycache__/
-*/__pycache__/
+**/__pycache__/
