@@ -1,0 +1,36 @@
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.status-badge.submitted {
+    background: rgba(255, 176, 32, 0.1);
+    color: #FFB020;
+}
+
+.status-badge.completed {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+}
+
+.invoice-selector {
+    max-height: 300px;
+    overflow-y: auto;
+    background: rgba(13, 25, 76, 0.5);
+    border: 1px solid rgba(0, 198, 255, 0.1);
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.invoice-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-bottom: 1px solid rgba(0, 198, 255, 0.1);
+}
+
+.invoice-item:last-child {
+    border-bottom: none;
+} 

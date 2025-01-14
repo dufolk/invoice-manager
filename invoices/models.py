@@ -81,7 +81,8 @@ class Invoice(models.Model):
         verbose_name_plural = verbose_name
 
     def __str__(self):
-        return f"{self.invoice_number} - {self.reimbursement_person}"
+        # 报销人-发票明细-日期-金额
+        return f"{self.reimbursement_person} - {self.details} - {self.invoice_date} - {self.amount}"
 
     def check_potential_issues(self):
         """检查发票是否可能存在问题"""
@@ -220,7 +221,7 @@ class ReimbursementRecord(models.Model):
         ('COMPLETED', '已报账'),
     ]
     
-    reimbursement_date = models.DateTimeField('报账时间')
+    reimbursement_date = models.DateField('报账日期', default=timezone.now)
     invoices = models.ManyToManyField(Invoice, verbose_name='关联发票')
     record_type = models.CharField('报账类型', max_length=10, choices=RECORD_TYPES)
     status = models.CharField('报账状态', max_length=10, choices=STATUS_CHOICES, 

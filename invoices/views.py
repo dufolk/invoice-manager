@@ -1,9 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth
-from .models import Invoice, ExpenseType, TravelInvoice
+from .models import Invoice, ExpenseType, TravelInvoice, ReimbursementRecord
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -584,8 +584,73 @@ def manage_invoice_create(request):
 
 @login_required
 def manage_reimbursement_list(request):
-    return render(request, 'invoices/manage/reimbursement_list.html')
+    # 获取筛选参数
+    record_type = request.GET.get('type', '')
+    status = request.GET.get('status', '')
+    
+    # 构建查询
+    records = ReimbursementRecord.objects.all()
+    
+    if record_type:
+        records = records.filter(record_type=record_type)
+    if status:
+        records = records.filter(status=status)
+        
+    # 按时间倒序排序
+    records = records.order_by('-reimbursement_date')
+    
+    context = {
+        'records': records
+    }
+    
+    return render(request, 'invoices/manage/reimbursement_list.html', context)
 
 @login_required
 def manage_fund_list(request):
     return render(request, 'invoices/manage/fund_list.html')
+
+@login_required
+def manage_reimbursement_add(request):
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                record = ReimbursementRecord.objects.create(
+                    reimbursement_date=timezone.now().date(),
+                    record_type=request.POST['record_type'],
+                    remarks=request.POST.get('remarks', '')
+                )
+                
+                # 添加关联的发票
+                invoice_ids = request.POST.getlist('invoice_ids[]')
+                if invoice_ids:
+                    record.invoices.set(invoice_ids)
+                    
+                messages.success(request, '报账记录创建成功')
+                return redirect('invoices:manage_reimbursement_list')
+        except Exception as e:
+            messages.error(request, f'创建失败：{str(e)}')
+            
+    return redirect('invoices:manage_reimbursement_list')
+
+@login_required
+def manage_reimbursement_complete(request, pk):
+    if request.method == 'POST':
+        try:
+            record = get_object_or_404(ReimbursementRecord, pk=pk)
+            record.status = 'COMPLETED'
+            record.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+@login_required
+def manage_unreimbursed_invoices(request):
+    # 获取未报账的发票
+    invoices = Invoice.objects.filter(
+        reimbursementrecord__isnull=True
+    ).values('id', 'invoice_number', 'amount', 'reimbursement_person')
+    
+    return JsonResponse({
+        'invoices': list(invoices)
+    })

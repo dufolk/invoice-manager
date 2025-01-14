@@ -7,15 +7,124 @@
 <div class="page-header">
     <h1>报账管理</h1>
     <div class="page-actions">
-        <a href="#" class="btn btn-primary">
+        <a href="#" class="btn btn-primary" onclick="showNewReimbursementModal()">
             <span class="icon">➕</span>新建报账
         </a>
     </div>
 </div>
 
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="form-group">
+            <select name="type">
+                <option value="">所有类型</option>
+                <option value="DAILY" {% if request.GET.type == 'DAILY' %}selected{% endif %}>日常报销</option>
+                <option value="TRAVEL" {% if request.GET.type == 'TRAVEL' %}selected{% endif %}>差旅报销</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <select name="status">
+                <option value="">所有状态</option>
+                <option value="SUBMITTED" {% if request.GET.status == 'SUBMITTED' %}selected{% endif %}>已提交</option>
+                <option value="COMPLETED" {% if request.GET.status == 'COMPLETED' %}selected{% endif %}>已报账</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-filter">
+            <span class="icon">🔍</span>筛选
+        </button>
+    </form>
+</div>
+
 <div class="card">
-    <div class="empty-message">
-        功能开发中...
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>报账时间</th>
+                    <th>报账类型</th>
+                    <th>发票数量</th>
+                    <th>总金额</th>
+                    <th>状态</th>
+                    <th>备注</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>{{ record.reimbursement_date|date:"Y-m-d" }}</td>
+                    <td>{{ record.get_record_type_display }}</td>
+                    <td>{{ record.invoices.count }}</td>
+                    <td>¥{{ record.total_amount|floatformat:2 }}</td>
+                    <td>
+                        <span class="status-badge {{ record.status|lower }}">
+                            {{ record.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ record.remarks|default:"-" }}</td>
+                    <td class="actions">
+                        <button class="btn-icon" onclick="viewReimbursement({{ record.id }})" title="查看详情">
+                            👁️
+                        </button>
+                        {% if record.status == 'SUBMITTED' %}
+                        <button class="btn-icon" onclick="markAsCompleted({{ record.id }})" title="标记为已报账">
+                            ✓
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="empty-message">暂无报账记录</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
+
+<!-- 新建报账模态框 -->
+<div id="newReimbursementModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>新建报账</h3>
+            <button type="button" class="close-btn" onclick="closeNewReimbursementModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <form id="reimbursementForm" method="post" action="{% url 'invoices:manage_reimbursement_add' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>报账类型*</label>
+                    <select name="record_type" required>
+                        <option value="DAILY">日常报销</option>
+                        <option value="TRAVEL">差旅报销</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>选择发票*</label>
+                    <div class="invoice-selector">
+                        <!-- 这里将通过 JavaScript 动态加载未报账的发票列表 -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea name="remarks" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">提交报账</button>
+                    <button type="button" class="btn" onclick="closeNewReimbursementModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'invoices/css/manage/reimbursement.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'invoices/js/reimbursement.js' %}"></script>
 {% endblock %} 

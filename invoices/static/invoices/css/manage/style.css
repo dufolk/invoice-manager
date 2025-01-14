@@ -65,7 +65,7 @@ input::placeholder {
 }
 
 button {
-    width: 100%;
+    /* width: 100%; */
     padding: 12px;
     background: rgba(0, 198, 255, 0.2);
     border: 1px solid rgba(0, 198, 255, 0.3);
@@ -1185,7 +1185,7 @@ input[type="checkbox"]:checked {
 /* 调整表格第一列宽度 */
 table th:first-child,
 table td:first-child {
-    width: 40px;
+    /* width: 40px; */
     text-align: center;
     padding: 0 10px;
 }
@@ -1292,7 +1292,7 @@ table td {
 
 /* 调整特定列的宽度 */
 table th:nth-child(2) {  /* 发票号列 */
-    min-width: 120px;
+    /* min-width: 120px; */
     text-align: center;
 }
 

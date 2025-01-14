@@ -85,13 +85,13 @@
     </div>
 
     <script>
-        const monthlyLabels = {{ monthly_labels|safe }};
-        const monthlyData = {{ monthly_data|safe }};
-        const typeData = {{ type_data|safe }};
-        const expenseTypeData = {{ expense_type_data|safe }};
-        const travelLabels = {{ travel_labels|safe }};
-        const travelData = {{ travel_data|safe }};
+        const monthlyLabels = JSON.parse('{{ monthly_labels|safe }}');
+        const monthlyData = JSON.parse('{{ monthly_data|safe }}');
+        const typeData = JSON.parse('{{ type_data|safe }}');
+        const expenseTypeData = JSON.parse('{{ expense_type_data|safe }}');
+        const travelLabels = JSON.parse('{{ travel_labels|safe }}');
+        const travelData = JSON.parse('{{ travel_data|safe }}');
     </script>
     <script src="{% static 'invoices/js/dashboard.js' %}"></script>
 </body>
-</html> 
+</html>

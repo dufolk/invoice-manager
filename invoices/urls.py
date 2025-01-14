@@ -24,5 +24,11 @@ urlpatterns = [
     path('manage/parse-invoice/', views.parse_invoice, name='parse_invoice'),
     path('manage/reimbursement/', views.manage_reimbursement_list, 
          name='manage_reimbursement_list'),
+    path('manage/reimbursement/add/', views.manage_reimbursement_add,
+         name='manage_reimbursement_add'),
+    path('manage/reimbursement/<int:pk>/complete/', views.manage_reimbursement_complete,
+         name='manage_reimbursement_complete'),
+    path('manage/reimbursement/unreimbursed-invoices/', views.manage_unreimbursed_invoices,
+         name='manage_unreimbursed_invoices'),
     path('manage/fund/', views.manage_fund_list, name='manage_fund_list'),
 ] 
