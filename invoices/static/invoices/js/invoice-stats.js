@@ -76,7 +76,132 @@ function showPersonalStats() {
 }
 
 function searchPersonStats() {
-    // ... 搜索个人统计的代码 ...
+    const searchValue = document.getElementById('personSearch').value.trim();
+    const noDataTip = document.getElementById('noDataTip');
+    
+    if (!searchValue) {
+        noDataTip.style.display = 'block';
+        noDataTip.textContent = '请输入报销人姓名';
+        return;
+    }
+    
+    if (!personalChart) {
+        personalChart = echarts.init(document.getElementById('statsChart'));
+    } else {
+        personalChart.dispose();
+        personalChart = echarts.init(document.getElementById('statsChart'));
+    }
+    
+    // 获取统计数据
+    showLoading(personalChart);
+    fetch(`/manage/stats/personal/?search=${encodeURIComponent(searchValue)}`)
+        .then(response => response.json())
+        .then(data => {
+            hideLoading(personalChart);
+            if (!data.series || data.series.length === 0) {
+                noDataTip.style.display = 'block';
+                noDataTip.textContent = '未找到相关数据，请尝试其他搜索条件';
+                return;
+            }
+            
+            noDataTip.style.display = 'none';
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(50, 50, 50, 0.9)',
+                    borderColor: 'rgba(126, 174, 255, 0.2)',
+                    textStyle: {
+                        color: '#fff'
+                    },
+                    axisPointer: {
+                        type: 'line',
+                        lineStyle: {
+                            color: 'rgba(126, 174, 255, 0.5)'
+                        }
+                    }
+                },
+                legend: {
+                    data: data.series.map(s => s.name),
+                    textStyle: {
+                        color: '#7EAEFF'
+                    },
+                    top: 10
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.months,
+                    axisLabel: {
+                        color: '#7EAEFF',
+                        rotate: 45
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(126, 174, 255, 0.2)'
+                        }
+                    },
+                    splitLine: {
+                        show: false
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        color: '#7EAEFF',
+                        formatter: value => '¥' + value.toFixed(2)
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: 'rgba(126, 174, 255, 0.1)'
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(126, 174, 255, 0.2)'
+                        }
+                    }
+                },
+                series: data.series.map(s => ({
+                    ...s,
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    lineStyle: {
+                        width: 3
+                    },
+                    itemStyle: {
+                        borderWidth: 2
+                    },
+                    emphasis: {
+                        focus: 'series',
+                        itemStyle: {
+                            borderWidth: 3,
+                            borderColor: '#fff',
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(126, 174, 255, 0.5)'
+                        }
+                    }
+                }))
+            };
+            personalChart.setOption(option);
+        })
+        .catch(error => {
+            hideLoading(personalChart);
+            console.error('Error:', error);
+            alert(error.message || '获取发票详情失败');
+            
+            // 如果是因为发票不存在，关闭模态框
+            const modal = document.getElementById('invoiceDetailModal');
+            if (modal.style.display === 'block') {
+                modal.style.display = 'none';
+            }
+        });
 }
 
 // 费用类型统计相关函数

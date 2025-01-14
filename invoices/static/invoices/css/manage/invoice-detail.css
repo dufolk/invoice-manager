@@ -43,8 +43,7 @@
 
 /* PDF 预览容器 */
 .detail-image.pdf-container {
-    height: 0;
-    padding-bottom: 70.7%;   /* A4横向比例 */
+    min-height: 550px;
 }
 
 /* 图片预览容器 */

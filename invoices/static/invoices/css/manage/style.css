@@ -551,7 +551,7 @@ input[type="file"] {
 
 /* 卡片样式 */
 .card {
-    max-width: 1200px;
+    /* max-width: 1200px; */
     margin: 0 auto;
     padding: 30px;
     background: rgba(13, 25, 76, 0.95);
@@ -1287,35 +1287,43 @@ table td {
     padding: 12px 15px;
     vertical-align: middle;
     border-bottom: 1px solid rgba(13, 25, 76, 0.3);
+    text-align: center;
 }
 
 /* 调整特定列的宽度 */
 table th:nth-child(2) {  /* 发票号列 */
     min-width: 120px;
+    text-align: center;
 }
 
 table th:nth-child(3) {  /* 类型列 */
     min-width: 80px;
+    text-align: center;
 }
 
 table th:nth-child(4) {  /* 费用类型列 */
     min-width: 100px;
+    text-align: center;
 }
 
 table th:nth-child(5) {  /* 金额列 */
     min-width: 100px;
+    text-align: center;
 }
 
 table th:nth-child(6) {  /* 报销人列 */
     min-width: 100px;
+    text-align: center;
 }
 
 table th:nth-child(7) {  /* 发票日期列 */
     min-width: 100px;
+    text-align: center;
 }
 
 table th:nth-child(8) {  /* 操作列 */
     min-width: 80px;
+    text-align: center;
 }
 
 /* 加载提示样式 */
