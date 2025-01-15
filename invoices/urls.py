@@ -26,6 +26,8 @@ urlpatterns = [
          name='manage_reimbursement_list'),
     path('manage/reimbursement/add/', views.manage_reimbursement_add,
          name='manage_reimbursement_add'),
+    path('manage/reimbursement/<int:pk>/', views.manage_reimbursement_detail,
+         name='manage_reimbursement_detail'),
     path('manage/reimbursement/<int:pk>/complete/', views.manage_reimbursement_complete,
          name='manage_reimbursement_complete'),
     path('manage/reimbursement/unreimbursed-invoices/', views.manage_unreimbursed_invoices,

@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
+from django.db.models import Sum
 
 class ExpenseType(models.Model):
     """费用类型模型"""
@@ -39,6 +40,7 @@ class Invoice(models.Model):
     expense_type = models.ForeignKey(ExpenseType, on_delete=models.PROTECT, verbose_name='费用类型')
     amount = models.DecimalField('金额', max_digits=10, decimal_places=2)
     invoice_date = models.DateField('发票日期')
+    reimbursement_date = models.DateField('报销日期', null=True, blank=True)
     reimbursement_person = models.CharField('报销人', max_length=50)
     details = models.TextField('报销内容明细', blank=True)
     remarks = models.TextField('备注', blank=True)
@@ -226,6 +228,7 @@ class ReimbursementRecord(models.Model):
     record_type = models.CharField('报账类型', max_length=10, choices=RECORD_TYPES)
     status = models.CharField('报账状态', max_length=10, choices=STATUS_CHOICES, 
                              default='SUBMITTED')
+    total_amount = models.DecimalField('总金额', max_digits=10, decimal_places=2, default=0)
     remarks = models.TextField('备注', blank=True)
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
@@ -237,3 +240,8 @@ class ReimbursementRecord(models.Model):
 
     def __str__(self):
         return f"{self.get_record_type_display()} - {self.reimbursement_date}"
+
+    def update_total_amount(self):
+        """更新总金额"""
+        self.total_amount = self.invoices.aggregate(total=Sum('amount'))['total'] or 0
+        self.save()

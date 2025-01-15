@@ -1547,3 +1547,7 @@ tr.has-issue:hover {
 tr:hover .issue-icon {
     opacity: 1;
 }
+
+.login-btn {
+    width: 100%;
+}

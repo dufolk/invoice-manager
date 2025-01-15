@@ -51,7 +51,7 @@
             </thead>
             <tbody>
                 {% for record in records %}
-                <tr>
+                <tr data-record-id="{{ record.id }}" class="clickable-row">
                     <td>{{ record.reimbursement_date|date:"Y-m-d" }}</td>
                     <td>{{ record.get_record_type_display }}</td>
                     <td>{{ record.invoices.count }}</td>
@@ -63,9 +63,6 @@
                     </td>
                     <td>{{ record.remarks|default:"-" }}</td>
                     <td class="actions">
-                        <button class="btn-icon" onclick="viewReimbursement({{ record.id }})" title="查看详情">
-                            👁️
-                        </button>
                         {% if record.status == 'SUBMITTED' %}
                         <button class="btn-icon" onclick="markAsCompleted({{ record.id }})" title="标记为已报账">
                             ✓
@@ -126,5 +123,13 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+    // 定义全局变量存储URL
+    const URLS = {
+        unreimbursedInvoices: '{% url "invoices:manage_unreimbursed_invoices" %}',
+        reimbursementComplete: '{% url "invoices:manage_reimbursement_complete" pk=0 %}',
+        reimbursementDetail: '{% url "invoices:manage_reimbursement_detail" pk=0 %}'
+    };
+</script>
 <script src="{% static 'invoices/js/reimbursement.js' %}"></script>
 {% endblock %} 

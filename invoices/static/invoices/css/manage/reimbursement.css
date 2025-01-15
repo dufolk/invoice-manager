@@ -33,4 +33,13 @@
 
 .invoice-item:last-child {
     border-bottom: none;
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.clickable-row:hover {
+    background: rgba(0, 198, 255, 0.1);
 } 

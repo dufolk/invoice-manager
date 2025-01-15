@@ -623,7 +623,17 @@ def manage_reimbursement_add(request):
                 # 添加关联的发票
                 invoice_ids = request.POST.getlist('invoice_ids[]')
                 if invoice_ids:
+                    # 计算总金额
+                    total = Invoice.objects.filter(id__in=invoice_ids).aggregate(
+                        total=Sum('amount'))['total'] or 0
+                    record.total_amount = total
+                    record.save()
+                    
                     record.invoices.set(invoice_ids)
+                    # 更新发票的报销日期
+                    Invoice.objects.filter(id__in=invoice_ids).update(
+                        reimbursement_date=record.reimbursement_date
+                    )
                     
                 messages.success(request, '报账记录创建成功')
                 return redirect('invoices:manage_reimbursement_list')
@@ -638,6 +648,10 @@ def manage_reimbursement_complete(request, pk):
         try:
             record = get_object_or_404(ReimbursementRecord, pk=pk)
             record.status = 'COMPLETED'
+            # 更新关联发票的状态
+            record.invoices.all().update(
+                reimbursement_status='TRANSFERRED'
+            )
             record.save()
             return JsonResponse({'success': True})
         except Exception as e:
@@ -654,3 +668,12 @@ def manage_unreimbursed_invoices(request):
     return JsonResponse({
         'invoices': list(invoices)
     })
+
+@login_required
+def manage_reimbursement_detail(request, pk):
+    record = get_object_or_404(ReimbursementRecord, pk=pk)
+    context = {
+        'record': record,
+        'invoices': record.invoices.all()
+    }
+    return render(request, 'invoices/manage/reimbursement_detail.html', context)

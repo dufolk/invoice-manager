@@ -86,7 +86,19 @@ class FundRecordAdmin(admin.ModelAdmin):
 
 @admin.register(ReimbursementRecord)
 class ReimbursementRecordAdmin(admin.ModelAdmin):
-    list_display = ('record_type', 'reimbursement_date', 'status')
+    list_display = ('record_type', 'reimbursement_date', 'total_amount', 'status')
     list_filter = ('record_type', 'status', 'reimbursement_date')
     search_fields = ('remarks',)
     filter_horizontal = ('invoices',)
+    readonly_fields = ('total_amount',)
+
+    def save_related(self, request, form, formsets, change):
+        """保存关联对象后更新总金额"""
+        super().save_related(request, form, formsets, change)
+        form.instance.update_total_amount()
+
+    def save_model(self, request, obj, form, change):
+        """保存模型时更新总金额"""
+        super().save_model(request, obj, form, change)
+        if not change:  # 只在创建时计算，修改时等待 save_related
+            obj.update_total_amount()
