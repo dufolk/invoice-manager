@@ -7,9 +7,12 @@
 <div class="page-header">
     <h1>报账管理</h1>
     <div class="page-actions">
-        <a href="#" class="btn btn-primary" onclick="showNewReimbursementModal()">
+        <!-- <a href="#" class="btn btn-primary" onclick="showNewReimbursementModal()">
             <span class="icon">➕</span>新建报账
-        </a>
+        </a> -->
+        <button class="btn btn-primary" onclick="showNewReimbursementModal()">
+            <span class="icon">➕</span>新建报账
+        </button>
     </div>
 </div>
 
@@ -90,7 +93,7 @@
         <div class="modal-body">
             <form id="reimbursementForm" method="post" action="{% url 'invoices:manage_reimbursement_add' %}">
                 {% csrf_token %}
-                <div class="form-group">
+                <div class="form-group filter-form">
                     <label>报账类型*</label>
                     <select name="record_type" required>
                         <option value="DAILY">日常报销</option>
@@ -124,11 +127,8 @@
 
 {% block extra_js %}
 <script>
-    // 定义全局变量存储URL
     const URLS = {
-        unreimbursedInvoices: '{% url "invoices:manage_unreimbursed_invoices" %}',
-        reimbursementComplete: '{% url "invoices:manage_reimbursement_complete" pk=0 %}',
-        reimbursementDetail: '{% url "invoices:manage_reimbursement_detail" pk=0 %}'
+        unreimbursedInvoices: '{% url "invoices:manage_unreimbursed_invoices" %}'
     };
 </script>
 <script src="{% static 'invoices/js/reimbursement.js' %}"></script>

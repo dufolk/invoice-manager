@@ -39,10 +39,6 @@ h2 {
     text-shadow: 0 0 10px rgba(0, 198, 255, 0.3);
 }
 
-.form-group {
-    margin-bottom: 20px;
-}
-
 input {
     width: 100%;
     padding: 12px;
@@ -463,10 +459,6 @@ td {
     margin-bottom: 30px;
 }
 
-.form-group {
-    margin-bottom: 0;
-}
-
 .form-group.full-width {
     grid-column: 1 / -1;
 }
@@ -578,14 +570,18 @@ input[type="file"] {
 }
 
 .btn-danger {
-    background: linear-gradient(45deg, #ff4444, #ff6b6b);
-    border: none;
-    box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+    background: rgba(255, 68, 68, 0.2);
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    color: #ff4444;
 }
 
-.btn-danger:hover {
-    background: linear-gradient(45deg, #ff6b6b, #ff4444);
-    box-shadow: 0 6px 20px rgba(255, 68, 68, 0.4);
+.btn-danger:hover:not(:disabled) {
+    background: rgba(255, 68, 68, 0.3);
+}
+
+.btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* 费用类型卡片网格布局 */
@@ -1118,7 +1114,8 @@ input[type="file"] {
 
 /* 表单组样式 */
 .form-group {
-    margin-bottom: 0;
+    margin-top: 20px;
+    margin-bottom: 20px;
     width: 100%;
 }
 
@@ -1236,13 +1233,14 @@ table td:first-child {
 
 /* 图表按钮样式 */
 .btn-chart {
-    background: rgba(0, 198, 255, 0.2);
-    border: 1px solid rgba(0, 198, 255, 0.3);
-    color: #00C6FF;
+    background: linear-gradient(45deg, #0088ff, #00C6FF);
+    border: none;
+    color: #fff;
 }
 
 .btn-chart:hover {
-    background: rgba(0, 198, 255, 0.3);
+    background: linear-gradient(45deg, #00C6FF, #0088ff);
+    transform: translateY(-1px);
 }
 
 /* 统计栏按钮样式 */
@@ -1257,26 +1255,10 @@ table td:first-child {
     padding: 0 20px;
 }
 
-/* 删除按钮样式 */
-.btn-danger {
-    background: rgba(255, 68, 68, 0.2);
-    border: 1px solid rgba(255, 68, 68, 0.3);
-    color: #ff4444;
-}
-
-.btn-danger:hover:not(:disabled) {
-    background: rgba(255, 68, 68, 0.3);
-}
-
-.btn-danger:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* 表格样式优化 */
+/* 合并重复的表格样式 */
 table th {
-    white-space: nowrap;  /* 防止表头文字换行 */
-    padding: 12px 15px;   /* 适当增加内边距 */
+    white-space: nowrap;
+    padding: 12px 15px;
     font-size: 14px;
     color: #7EAEFF;
     border-bottom: 1px solid rgba(0, 198, 255, 0.1);
@@ -1290,91 +1272,13 @@ table td {
     text-align: center;
 }
 
-/* 调整特定列的宽度 */
-table th:nth-child(2) {  /* 发票号列 */
-    /* min-width: 120px; */
-    text-align: center;
-}
-
-table th:nth-child(3) {  /* 类型列 */
-    min-width: 80px;
-    text-align: center;
-}
-
-table th:nth-child(4) {  /* 费用类型列 */
-    min-width: 100px;
-    text-align: center;
-}
-
-table th:nth-child(5) {  /* 金额列 */
-    min-width: 100px;
-    text-align: center;
-}
-
-table th:nth-child(6) {  /* 报销人列 */
-    min-width: 100px;
-    text-align: center;
-}
-
-table th:nth-child(7) {  /* 发票日期列 */
-    min-width: 100px;
-    text-align: center;
-}
-
-table th:nth-child(8) {  /* 操作列 */
-    min-width: 80px;
-    text-align: center;
-}
-
-/* 加载提示样式 */
-#loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-
-.loading-content {
-    background: rgba(13, 25, 76, 0.95);
-    padding: 30px;
-    border-radius: 12px;
-    border: 1px solid rgba(0, 198, 255, 0.1);
-    text-align: center;
-}
-
-.loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid rgba(0, 198, 255, 0.1);
-    border-left-color: #00C6FF;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 15px;
-}
-
-.loading-text {
-    color: #00C6FF;
-    font-size: 16px;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* 文件上传组样式 */
+/* 合并重复的文件上传组样式 */
 .file-upload-group {
     display: flex;
     gap: 10px;
     align-items: stretch;
     width: 100%;
+    margin-bottom: 10px;
 }
 
 .file-upload-group input[type="file"] {
@@ -1470,10 +1374,6 @@ tr:hover .issue-icon {
     border-bottom-color: rgba(50, 50, 50, 0.95);
     margin-top: -5px;
     z-index: 1001;
-}
-
-.file-upload-group {
-    margin-bottom: 10px;
 }
 
 .file-upload-group .btn-link {

@@ -677,3 +677,83 @@ def manage_reimbursement_detail(request, pk):
         'invoices': record.invoices.all()
     }
     return render(request, 'invoices/manage/reimbursement_detail.html', context)
+
+@login_required
+def manage_reimbursement_add_invoice(request, pk):
+    if request.method == 'POST':
+        try:
+            record = get_object_or_404(ReimbursementRecord, pk=pk)
+            invoice_ids = request.POST.getlist('invoice_ids[]')
+            
+            with transaction.atomic():
+                # 添加新发票
+                record.invoices.add(*invoice_ids)
+                # 更新发票的报销日期
+                Invoice.objects.filter(id__in=invoice_ids).update(
+                    reimbursement_date=record.reimbursement_date
+                )
+                # 更新总金额
+                record.update_total_amount()
+                
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    # GET 请求返回可选的发票列表
+    invoices = Invoice.objects.filter(
+        reimbursementrecord__isnull=True
+    ).values('id', 'invoice_number', 'amount', 'reimbursement_person')
+    
+    return JsonResponse({'invoices': list(invoices)})
+
+@login_required
+def manage_reimbursement_remove_invoice(request, pk, invoice_pk):
+    if request.method == 'POST':
+        try:
+            record = get_object_or_404(ReimbursementRecord, pk=pk)
+            # 确保发票属于这个报账记录
+            if not record.invoices.filter(id=invoice_pk).exists():
+                return JsonResponse({
+                    'success': False, 
+                    'error': '发票不属于此报账记录'
+                })
+            
+            with transaction.atomic():
+                # 移除发票关联
+                record.invoices.remove(invoice_pk)
+                # 清除发票的报销日期
+                Invoice.objects.filter(id=invoice_pk).update(
+                    reimbursement_date=None
+                )
+                # 更新总金额
+                record.update_total_amount()
+                
+            return JsonResponse({'success': True})
+        except Exception as e:
+            import traceback
+            print(traceback.format_exc())  # 打印详细错误信息到控制台
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+@login_required
+def manage_reimbursement_batch_remove_invoices(request, pk):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            invoice_ids = data.get('invoice_ids', [])
+            
+            record = get_object_or_404(ReimbursementRecord, pk=pk)
+            with transaction.atomic():
+                # 批量移除发票关联
+                record.invoices.remove(*invoice_ids)
+                # 清除发票的报销日期
+                Invoice.objects.filter(id__in=invoice_ids).update(
+                    reimbursement_date=None
+                )
+                # 更新总金额
+                record.update_total_amount()
+                
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})

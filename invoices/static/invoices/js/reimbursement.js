@@ -1,12 +1,13 @@
 function showNewReimbursementModal() {
+    console.log('showNewReimbursementModal');
     const modal = document.getElementById('newReimbursementModal');
-    modal.classList.add('show');
+    modal.style.display = 'block';
     loadUnreimbursedInvoices();
 }
 
 function closeNewReimbursementModal() {
     const modal = document.getElementById('newReimbursementModal');
-    modal.classList.remove('show');
+    modal.style.display = 'none';
 }
 
 async function loadUnreimbursedInvoices() {
@@ -46,6 +47,30 @@ async function markAsCompleted(id) {
             window.location.reload();
         } else {
             alert('操作失败，请重试');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    }
+}
+
+async function removeInvoice(invoiceId) {
+    if (!confirm('确定要移除此发票吗？')) return;
+    
+    try {
+        const response = await fetch(URLS.removeInvoice.replace('0', invoiceId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            alert('操作失败：' + (data.error || '请重试'));
         }
     } catch (error) {
         console.error('Error:', error);

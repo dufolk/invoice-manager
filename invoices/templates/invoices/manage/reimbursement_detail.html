@@ -1,0 +1,512 @@
+{% extends 'invoices/manage/base.html' %}
+{% load static %}
+
+{% block title %}报账详情 - 525实验室发票管理系统{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="page-header">
+    <h1>报账详情</h1>
+    <div class="page-actions">
+        <a href="{% url 'invoices:manage_reimbursement_list' %}" class="btn">
+            <span class="icon">←</span>返回列表
+        </a>
+        {% if record.status == 'SUBMITTED' %}
+        <button class="btn btn-primary" onclick="markAsCompleted({{ record.id }})">
+            <span class="icon">✓</span>标记为已报账
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="card">
+        <div class="card-header">
+            <h3>基本信息</h3>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>报账类型</label>
+                    <div>{{ record.get_record_type_display }}</div>
+                </div>
+                <div class="info-item">
+                    <label>报账日期</label>
+                    <div>{{ record.reimbursement_date|date:"Y-m-d" }}</div>
+                </div>
+                <div class="info-item">
+                    <label>总金额</label>
+                    <div>¥{{ record.total_amount|floatformat:2 }}</div>
+                </div>
+                <div class="info-item">
+                    <label>状态</label>
+                    <div>
+                        <span class="status-badge {{ record.status|lower }}">
+                            {{ record.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="info-item full">
+                    <label>备注</label>
+                    <div>{{ record.remarks|default:"无" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>关联发票</h3>
+            <div class="card-actions">
+                <button class="btn btn-sm" onclick="showAddInvoiceModal()">
+                    <span class="icon">➕</span>新增关联发票
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteSelectedInvoices()" id="batchDeleteBtn" style="display: none;">
+                    <span class="icon">🗑️</span>批量删除
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="40">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                            </th>
+                            <th>发票号</th>
+                            <th>费用类型</th>
+                            <th>金额</th>
+                            <th>报销人</th>
+                            <th>发票日期</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in invoices %}
+                        <tr>
+                            <td>
+                                <input type="checkbox" name="invoice_ids[]" value="{{ invoice.id }}" 
+                                       class="invoice-checkbox" onchange="updateBatchDeleteBtn()">
+                            </td>
+                            <td>{{ invoice.invoice_number }}</td>
+                            <td>{{ invoice.expense_type.name }}</td>
+                            <td>¥{{ invoice.amount|floatformat:2 }}</td>
+                            <td>{{ invoice.reimbursement_person }}</td>
+                            <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
+                            <td>
+                                <button class="btn-icon" onclick="removeInvoice({{ invoice.id }})" 
+                                        title="移除发票">
+                                    🗑️
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="empty-message">暂无关联发票</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增关联发票模态框 -->
+<div id="addInvoiceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>新增关联发票</h3>
+            <button type="button" class="close-btn" onclick="closeAddInvoiceModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <form id="addInvoiceForm" method="post" action="{{ URLS.addInvoice }}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>选择发票*</label>
+                    <div class="invoice-selector">
+                        <!-- 这里将通过 JavaScript 动态加载未报账的发票列表 -->
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">添加发票</button>
+                    <button type="button" class="btn" onclick="closeAddInvoiceModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-actions {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.page-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    height: 36px;
+    margin-bottom: 0px;
+}
+
+.page-actions .icon {
+    font-size: 16px;
+}
+
+.detail-grid .card {
+    margin: 0;
+    width: 100%;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.info-item.full {
+    grid-column: 1 / -1;
+}
+
+.info-item label {
+    color: #7EAEFF;
+    font-size: 14px;
+}
+
+.card-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(0, 198, 255, 0.1);
+}
+
+.card-header h3 {
+    margin: 0;
+    color: #00C6FF;
+    font-size: 18px;
+}
+
+.card-body {
+    padding: 0;
+}
+
+/* 表格样式优化 */
+.table-responsive {
+    margin: 0;
+    padding: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: rgba(13, 25, 76, 0.5);
+    color: #7EAEFF;
+    font-weight: normal;
+    text-align: left;
+    padding: 12px;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid rgba(0, 198, 255, 0.1);
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tr:hover td {
+    background: rgba(0, 198, 255, 0.05);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-sm {
+    padding: 4px 12px;
+    height: 28px;
+    font-size: 13px;
+}
+
+.btn-danger {
+    background: rgba(244, 67, 54, 0.1);
+    border-color: rgba(244, 67, 54, 0.3);
+    color: #F44336;
+}
+
+.btn-danger:hover {
+    background: rgba(244, 67, 54, 0.2);
+}
+
+/* 模态框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #0D194C;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(0, 198, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #7EAEFF;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+}
+
+.close-btn:hover {
+    color: #00C6FF;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #7EAEFF;
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-actions button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.form-actions button.btn-primary {
+    background: rgba(0, 198, 255, 0.2);
+    color: #00C6FF;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const URLS = {
+        reimbursementComplete: '{% url "invoices:manage_reimbursement_complete" pk=0 %}',
+        addInvoice: '{% url "invoices:manage_reimbursement_add_invoice" pk=record.id %}',
+        removeInvoice: '{% url "invoices:manage_reimbursement_remove_invoice" pk=record.id invoice_pk=0 %}',
+        batchRemoveInvoices: '{% url "invoices:manage_reimbursement_batch_remove_invoices" pk=record.id %}'
+    };
+</script>
+<script>
+async function markAsCompleted(id) {
+    if (!confirm('确定将此记录标记为已报账？')) return;
+    
+    try {
+        const response = await fetch(URLS.reimbursementComplete.replace('0', id), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('操作失败，请重试');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    }
+}
+
+function showAddInvoiceModal() {
+    const modal = document.getElementById('addInvoiceModal');
+    modal.classList.add('show');
+    loadAvailableInvoices();
+}
+
+function closeAddInvoiceModal() {
+    const modal = document.getElementById('addInvoiceModal');
+    modal.classList.remove('show');
+}
+
+async function loadAvailableInvoices() {
+    try {
+        const response = await fetch(URLS.addInvoice);
+        const data = await response.json();
+        
+        const container = document.querySelector('#addInvoiceModal .invoice-selector');
+        container.innerHTML = data.invoices.map(invoice => `
+            <div class="invoice-item">
+                <input type="checkbox" name="invoice_ids[]" value="${invoice.id}">
+                <span>${invoice.invoice_number} - ¥${invoice.amount} - ${invoice.reimbursement_person}</span>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading invoices:', error);
+        alert('加载发票列表失败，请重试');
+    }
+}
+
+// 处理添加发票表单提交
+document.getElementById('addInvoiceForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    try {
+        const formData = new FormData(this);
+        const response = await fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            alert('添加失败：' + (data.error || '请重试'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('添加失败，请重试');
+    }
+});
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.invoice-checkbox');
+    checkboxes.forEach(checkbox => checkbox.checked = selectAll.checked);
+    updateBatchDeleteBtn();
+}
+
+function updateBatchDeleteBtn() {
+    const checkboxes = document.querySelectorAll('.invoice-checkbox:checked');
+    const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+    batchDeleteBtn.style.display = checkboxes.length > 0 ? 'inline-flex' : 'none';
+}
+
+async function removeInvoice(invoiceId) {
+    if (!confirm('确定要移除此发票吗？')) return;
+    
+    try {
+        const response = await fetch(URLS.removeInvoice.replace('0', invoiceId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('操作失败，请重试');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    }
+}
+
+async function deleteSelectedInvoices() {
+    const selectedIds = Array.from(document.querySelectorAll('.invoice-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    if (!selectedIds.length || !confirm('确定要移除选中的发票吗？')) return;
+    
+    try {
+        const response = await fetch(URLS.batchRemoveInvoices, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ invoice_ids: selectedIds })
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('操作失败，请重试');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    }
+}
+</script>
+{% endblock %}
