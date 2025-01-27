@@ -126,10 +126,11 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    const URLS = {
-        unreimbursedInvoices: '{% url "invoices:manage_unreimbursed_invoices" %}'
-    };
-</script>
 <script src="{% static 'invoices/js/reimbursement.js' %}"></script>
+<script>
+    // 初始化动态 URL
+    initializeUrls({
+        unreimbursedInvoices: '{% url "invoices:manage_unreimbursed_invoices" %}'
+    });
+</script>
 {% endblock %} 

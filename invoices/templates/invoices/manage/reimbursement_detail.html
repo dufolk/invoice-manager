@@ -11,6 +11,9 @@
         <a href="{% url 'invoices:manage_reimbursement_list' %}" class="btn">
             <span class="icon">←</span>返回列表
         </a>
+        <button id="delete-btn" class="btn btn-danger" onclick="deleteRecord({{ record.id }})">
+            <span class="icon">🗑️</span>删除
+        </button>
         {% if record.status == 'SUBMITTED' %}
         <button class="btn btn-primary" onclick="markAsCompleted({{ record.id }})">
             <span class="icon">✓</span>标记为已报账
@@ -290,7 +293,7 @@ tr:hover td {
     background: #0D194C;
     border-radius: 8px;
     width: 90%;
-    max-width: 600px;
+    /* max-width: 600px; */
     max-height: 90vh;
     overflow-y: auto;
 }
@@ -301,10 +304,11 @@ tr:hover td {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 0px;
 }
 
 .modal-body {
-    padding: 20px;
+    padding: 0px 20px 0px;
 }
 
 .close-btn {
@@ -334,7 +338,7 @@ tr:hover td {
 
 .form-group input,
 .form-group select {
-    width: 100%;
+    /* width: 5%; */
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -363,10 +367,11 @@ tr:hover td {
 {% block extra_js %}
 <script>
     const URLS = {
-        reimbursementComplete: '{% url "invoices:manage_reimbursement_complete" pk=0 %}',
+        reimbursementComplete: '{% url "invoices:manage_reimbursement_complete" pk=record.id %}',
         addInvoice: '{% url "invoices:manage_reimbursement_add_invoice" pk=record.id %}',
         removeInvoice: '{% url "invoices:manage_reimbursement_remove_invoice" pk=record.id invoice_pk=0 %}',
-        batchRemoveInvoices: '{% url "invoices:manage_reimbursement_batch_remove_invoices" pk=record.id %}'
+        reimbursementDelete: '{% url "invoices:manage_reimbursement_delete" pk=record.id %}',
+        unreimbursedInvoices: '/manage/reimbursement/unreimbursed-invoices/'
     };
 </script>
 <script>
@@ -405,29 +410,90 @@ function closeAddInvoiceModal() {
 
 async function loadAvailableInvoices() {
     try {
-        const response = await fetch(URLS.addInvoice);
+        const response = await fetch(URLS.unreimbursedInvoices);
         const data = await response.json();
+        console.log(data);
         
         const container = document.querySelector('#addInvoiceModal .invoice-selector');
-        container.innerHTML = data.invoices.map(invoice => `
-            <div class="invoice-item">
-                <input type="checkbox" name="invoice_ids[]" value="${invoice.id}">
-                <span>${invoice.invoice_number} - ¥${invoice.amount} - ${invoice.reimbursement_person}</span>
+        container.innerHTML = `
+            <div class="filter-bar" style="margin-bottom: 15px;">
+                <input type="text" id="searchPerson" placeholder="搜索报销人..." 
+                       onkeyup="filterInvoices()" class="search-input">
+                <input type="date" id="searchDate" onchange="filterInvoices()" 
+                       class="date-input">
             </div>
-        `).join('');
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="40">
+                                <input type="checkbox" id="selectAllUnreimbursed" onchange="toggleSelectAllUnreimbursed()">
+                            </th>
+                            <th>发票号</th>
+                            <th>发票类型</th>
+                            <th>费用类型</th>
+                            <th>金额</th>
+                            <th>报销人</th>
+                            <th>发票日期</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoiceTableBody">
+                        ${data.invoices.map(invoice => `
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="invoice_ids[]" value="${invoice.id}" 
+                                           class="unreimbursed-checkbox">
+                                </td>
+                                <td>${invoice.invoice_number}</td>
+                                <td>${invoice.invoice_type_display}</td>
+                                <td>${invoice.expense_type_name}</td>
+                                <td>¥${typeof invoice.amount === 'number' ? 
+                                    invoice.amount.toFixed(2) : 
+                                    parseFloat(invoice.amount).toFixed(2)}</td>
+                                <td>${invoice.reimbursement_person}</td>
+                                <td>${invoice.invoice_date}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
     } catch (error) {
         console.error('Error loading invoices:', error);
         alert('加载发票列表失败，请重试');
     }
 }
 
+function toggleSelectAllUnreimbursed() {
+    const selectAll = document.getElementById('selectAllUnreimbursed');
+    const checkboxes = document.querySelectorAll('.unreimbursed-checkbox');
+    checkboxes.forEach(checkbox => checkbox.checked = selectAll.checked);
+}
+
+function deleteRecord(id) {
+    if (!confirm('确定要删除此记录吗？')) return;
+    window.location.href = URLS.reimbursementDelete.replace('0', id);
+}
+
 // 处理添加发票表单提交
-document.getElementById('addInvoiceForm')?.addEventListener('submit', async function(e) {
+document.getElementById('addInvoiceForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    // 获取选中的发票ID
+    const selectedInvoices = Array.from(
+        document.querySelectorAll('#addInvoiceModal input[name="invoice_ids[]"]:checked')
+    ).map(cb => cb.value);
+    
+    if (selectedInvoices.length === 0) {
+        alert('请至少选择一张发票');
+        return;
+    }
+    
     try {
-        const formData = new FormData(this);
-        const response = await fetch(this.action, {
+        const formData = new FormData();
+        selectedInvoices.forEach(id => formData.append('invoice_ids[]', id));
+        
+        const response = await fetch(URLS.addInvoice, {
             method: 'POST',
             body: formData,
             headers: {

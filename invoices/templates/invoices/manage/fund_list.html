@@ -7,15 +7,350 @@
 <div class="page-header">
     <h1>经费管理</h1>
     <div class="page-actions">
-        <a href="#" class="btn btn-primary">
+        <button class="btn btn-primary" onclick="showAddModal()">
             <span class="icon">➕</span>记录经费变动
-        </a>
+        </button>
     </div>
 </div>
 
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="form-group">
+            <input type="text" name="search" placeholder="搜索变动说明" value="{{ request.GET.search }}">
+        </div>
+        <div class="form-group">
+            <select name="type">
+                <option value="">所有类型</option>
+                <option value="INCOME" {% if request.GET.type == 'INCOME' %}selected{% endif %}>收入</option>
+                <option value="EXPENSE" {% if request.GET.type == 'EXPENSE' %}selected{% endif %}>支出</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <input type="date" name="start_date" placeholder="开始日期" value="{{ request.GET.start_date }}">
+        </div>
+        <div class="form-group">
+            <input type="date" name="end_date" placeholder="结束日期" value="{{ request.GET.end_date }}">
+        </div>
+        <button type="submit" class="btn btn-filter">
+            <span class="icon">🔍</span>
+            搜索
+        </button>
+    </form>
+</div>
+
 <div class="card">
-    <div class="empty-message">
-        功能开发中...
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th width="40">
+                        <input type="checkbox" id="select-all">
+                    </th>
+                    <th>变动日期</th>
+                    <th>类型</th>
+                    <th>金额</th>
+                    <th>变动后余额</th>
+                    <th>变动说明</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr data-record-id="{{ record.id }}">
+                    <td>
+                        <input type="checkbox" class="record-checkbox" value="{{ record.id }}">
+                    </td>
+                    <td>{{ record.record_date|date:"Y-m-d" }}</td>
+                    <td>{{ record.get_record_type_display }}</td>
+                    <td class="{% if record.amount < 0 %}text-danger{% else %}text-success{% endif %}">
+                        ¥{{ record.amount|floatformat:2 }}
+                    </td>
+                    <td>¥{{ record.balance|floatformat:2 }}</td>
+                    <td class="description-cell" onclick="showDescription(this)">
+                        <div class="description-preview">{{ record.description|truncatechars:30 }}</div>
+                        <div class="description-full" style="display:none;">{{ record.description }}</div>
+                    </td>
+                    <td class="actions">
+                        <button class="btn-icon" onclick="showEditModal({{ record.id }})" title="编辑">
+                            ✏️
+                        </button>
+                        <button class="btn-icon delete" onclick="showDeleteConfirm({{ record.id }})" title="删除">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="empty-message">暂无经费记录</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+        <a href="?page=1" class="btn">首页</a>
+        <a href="?page={{ page_obj.previous_page_number }}" class="btn">上一页</a>
+        {% endif %}
+
+        <span class="current-page">
+            第 {{ page_obj.number }} 页，共 {{ page_obj.paginator.num_pages }} 页
+        </span>
+
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="btn">下一页</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}" class="btn">末页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="stats-bar">
+    <div class="stats-info">
+        <span class="balance-total">
+            当前余额：<strong>¥{{ current_balance|floatformat:2 }}</strong>
+        </span>
+    </div>
+    <div class="stats-actions">
+        <button id="delete-btn" class="btn btn-danger" disabled>
+            <span class="icon">🗑️</span>删除
+        </button>
     </div>
 </div>
+
+<!-- 添加/编辑模态框 -->
+<div id="fundModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">记录经费变动</h3>
+            <button type="button" class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <form id="fundForm" onsubmit="return handleSubmit(event)">
+                {% csrf_token %}
+                <input type="hidden" id="recordId">
+                <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="form-group">
+                        <label for="record_type">变动类型</label>
+                        <select id="record_type" name="record_type" required>
+                            <option value="INCOME">收入</option>
+                            <option value="EXPENSE">支出</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">金额</label>
+                        <input type="number" id="amount" name="amount" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="record_date">变动日期</label>
+                        <input type="date" id="record_date" name="record_date" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="description">变动说明</label>
+                        <textarea id="description" name="description" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <button type="button" class="btn" onclick="closeModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>确认删除</h3>
+            <button type="button" class="close-btn" onclick="closeDeleteModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="confirm-delete">
+                <p class="warning">您确定要删除这条经费记录吗？此操作不可恢复！</p>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">确认删除</button>
+                    <button type="button" class="btn" onclick="closeDeleteModal()">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .text-danger {
+        color: #ff4444;
+    }
+    
+    .text-success {
+        color: #4CAF50;
+    }
+    
+    .description-cell {
+        cursor: pointer;
+        max-width: 300px;
+    }
+    
+    .description-preview {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .description-full {
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentRecordId = null;
+
+function showAddModal() {
+    currentRecordId = null;
+    document.getElementById('modalTitle').textContent = '记录经费变动';
+    document.getElementById('fundForm').reset();
+    document.getElementById('record_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('fundModal').style.display = 'block';
+}
+
+function showEditModal(recordId) {
+    currentRecordId = recordId;
+    document.getElementById('modalTitle').textContent = '编辑经费记录';
+    
+    fetch(`/manage/fund/${recordId}/edit/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('recordId').value = data.id;
+            document.getElementById('record_type').value = data.record_type;
+            document.getElementById('amount').value = data.amount;
+            document.getElementById('description').value = data.description;
+            document.getElementById('record_date').value = data.record_date;
+            document.getElementById('fundModal').style.display = 'block';
+        });
+}
+
+function closeModal() {
+    document.getElementById('fundModal').style.display = 'none';
+}
+
+function handleSubmit(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const url = currentRecordId 
+        ? `/manage/fund/${currentRecordId}/edit/`
+        : '/manage/fund/add/';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || '操作失败');
+        }
+    });
+    
+    return false;
+}
+
+function showDescription(cell) {
+    const preview = cell.querySelector('.description-preview');
+    const full = cell.querySelector('.description-full');
+    
+    if (preview.style.display !== 'none') {
+        preview.style.display = 'none';
+        full.style.display = 'block';
+    } else {
+        preview.style.display = 'block';
+        full.style.display = 'none';
+    }
+}
+
+function showDeleteConfirm(recordId) {
+    currentRecordId = recordId;
+    document.getElementById('deleteModal').style.display = 'block';
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+}
+
+function confirmDelete() {
+    if (!currentRecordId) return;
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/manage/fund/${currentRecordId}/delete/`;
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    form.appendChild(csrfInput);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// 批量选择和删除相关代码
+document.getElementById('select-all').addEventListener('change', function(e) {
+    document.querySelectorAll('.record-checkbox').forEach(checkbox => {
+        checkbox.checked = e.target.checked;
+    });
+    updateDeleteButton();
+});
+
+document.querySelectorAll('.record-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateDeleteButton);
+});
+
+function updateDeleteButton() {
+    const checkedBoxes = document.querySelectorAll('.record-checkbox:checked');
+    const deleteBtn = document.getElementById('delete-btn');
+    deleteBtn.disabled = checkedBoxes.length === 0;
+}
+
+document.getElementById('delete-btn').addEventListener('click', function() {
+    const checkedBoxes = document.querySelectorAll('.record-checkbox:checked');
+    if (checkedBoxes.length === 0) return;
+    
+    if (confirm(`确定要删除选中的 ${checkedBoxes.length} 条记录吗？`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/invoices/manage/fund/batch-delete/';
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        form.appendChild(csrfInput);
+        
+        checkedBoxes.forEach(checkbox => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'record_ids';
+            input.value = checkbox.value;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+});
+</script>
 {% endblock %} 

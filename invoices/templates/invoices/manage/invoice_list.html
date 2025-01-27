@@ -83,7 +83,7 @@
                 </thead>
                 <tbody>
                     {% for invoice in invoices %}
-                    <tr data-invoice-id="{{ invoice.id }}" {% if invoice.has_potential_issue %}class="has-issue"{% endif %}>
+                    <tr data-invoice-id="{{ invoice.id }}" {% if invoice.has_potential_issue %}class="has-issue"{% else %}class="no-issue"{% endif %}>
                         <td>
                             <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}">
                         </td>

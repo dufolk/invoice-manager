@@ -280,6 +280,9 @@ button:hover {
     overflow-x: auto;
     margin: 0 -15px;
     padding: 0 15px;
+    /* 最多显示 10行 */
+    max-height: 1000px;
+    overflow-y: auto;
 }
 
 table {
@@ -425,6 +428,32 @@ td {
     font-size: 16px;
 }
 
+.invoice-selector > .filter-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.search-input,
+.date-input {
+    padding: 8px 12px;
+    border: 1px solid rgba(0, 198, 255, 0.2);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 14px;
+}
+
+.search-input:focus,
+.date-input:focus {
+    border-color: rgba(0, 198, 255, 0.4);
+    outline: none;
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
 /* 分页样式 */
 .pagination {
     display: flex;
@@ -555,7 +584,7 @@ input[type="file"] {
 /* 删除确认页面样式 */
 .confirm-delete {
     text-align: center;
-    padding: 30px 20px;
+    /* padding: 30px 20px; */
 }
 
 .confirm-delete h3 {
@@ -1096,7 +1125,7 @@ input[type="file"] {
 }
 
 /* 表单控件统一样式 */
-.form select,
+select,
 .form input[type="text"],
 .form input[type="number"],
 .form input[type="date"],
@@ -1215,22 +1244,6 @@ table td:first-child {
     gap: 15px;
 }
 
-/* 删除按钮样式 */
-.btn-danger {
-    background: rgba(255, 68, 68, 0.2);
-    border: 1px solid rgba(255, 68, 68, 0.3);
-    color: #ff4444;
-}
-
-.btn-danger:hover:not(:disabled) {
-    background: rgba(255, 68, 68, 0.3);
-}
-
-.btn-danger:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 /* 图表按钮样式 */
 .btn-chart {
     background: linear-gradient(45deg, #0088ff, #00C6FF);
@@ -1262,7 +1275,7 @@ table th {
     font-size: 14px;
     color: #7EAEFF;
     border-bottom: 1px solid rgba(0, 198, 255, 0.1);
-    text-align: left;
+    text-align: center;
 }
 
 table td {
@@ -1413,6 +1426,12 @@ tr.has-issue {
 
 tr.has-issue:hover {
     background: rgba(255, 176, 32, 0.1);
+    transition: background 0.3s;
+}
+
+tr.no-issue:hover {
+    background: rgba(0, 198, 255, 0.1);
+    transition: background 0.3s;
 }
 
 .table {
@@ -1421,13 +1440,6 @@ tr.has-issue:hover {
     background: rgba(13, 25, 76, 0.5);
     border-radius: 8px;
     overflow: hidden;
-}
-
-.table th,
-.table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid rgba(0, 198, 255, 0.1);
 }
 
 .table tbody tr:hover {

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth
-from .models import Invoice, ExpenseType, TravelInvoice, ReimbursementRecord
+from .models import Invoice, ExpenseType, TravelInvoice, ReimbursementRecord, FundRecord
 import json
 from datetime import datetime, timedelta, timezone
 from django.contrib.auth import authenticate, login, logout
@@ -15,6 +15,7 @@ from collections import defaultdict
 import tempfile
 from scripts.invoice_parser import get_invoice_info
 from django.urls import reverse
+from django.utils import timezone
 
 def dashboard(request):
     # 基础统计数据
@@ -607,7 +608,118 @@ def manage_reimbursement_list(request):
 
 @login_required
 def manage_fund_list(request):
-    return render(request, 'invoices/manage/fund_list.html')
+    # 获取查询参数
+    search_query = request.GET.get('search', '')
+    record_type = request.GET.get('type', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    
+    # 构建查询
+    records = FundRecord.objects.all()
+    
+    if search_query:
+        records = records.filter(description__icontains=search_query)
+    
+    if record_type:
+        records = records.filter(record_type=record_type)
+        
+    if start_date:
+        records = records.filter(record_date__gte=start_date)
+        
+    if end_date:
+        records = records.filter(record_date__lte=end_date)
+    
+    # 按时间倒序排序
+    records = records.order_by('-record_date', '-created_at')
+    
+    # 获取最新余额
+    latest_record = FundRecord.objects.order_by('-record_date', '-created_at').first()
+    current_balance = latest_record.balance if latest_record else 0
+    
+    # 分页
+    paginator = Paginator(records, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'records': page_obj,
+        'current_balance': current_balance,
+        'is_paginated': page_obj.has_other_pages(),
+        'page_obj': page_obj,
+    }
+    
+    return render(request, 'invoices/manage/fund_list.html', context)
+
+@login_required
+def manage_fund_add(request):
+    if request.method == 'POST':
+        try:
+            amount = float(request.POST.get('amount', 0))
+            record_type = request.POST.get('record_type')
+            
+            # 如果是支出，将金额转为负数
+            if record_type == 'EXPENSE':
+                amount = -abs(amount)
+            else:
+                amount = abs(amount)
+                
+            record = FundRecord.objects.create(
+                amount=amount,
+                record_type=record_type,
+                description=request.POST.get('description', ''),
+                record_date=request.POST.get('record_date')
+            )
+            
+            messages.success(request, '经费记录添加成功')
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+@login_required
+def manage_fund_edit(request, pk):
+    record = get_object_or_404(FundRecord, pk=pk)
+    
+    if request.method == 'POST':
+        try:
+            amount = float(request.POST.get('amount', 0))
+            record_type = request.POST.get('record_type')
+            
+            # 如果是支出，将金额转为负数
+            if record_type == 'EXPENSE':
+                amount = -abs(amount)
+            else:
+                amount = abs(amount)
+                
+            record.amount = amount
+            record.record_type = record_type
+            record.description = request.POST.get('description', '')
+            record.record_date = request.POST.get('record_date')
+            record.save()
+            
+            messages.success(request, '经费记录更新成功')
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    data = {
+        'id': record.id,
+        'amount': abs(float(record.amount)),
+        'record_type': record.record_type,
+        'description': record.description,
+        'record_date': record.record_date.isoformat()
+    }
+    return JsonResponse(data)
+
+@login_required
+def manage_fund_delete(request, pk):
+    if request.method == 'POST':
+        record = get_object_or_404(FundRecord, pk=pk)
+        record.delete()
+        messages.success(request, '经费记录已删除')
+        return redirect('invoices:manage_fund_list')
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
 
 @login_required
 def manage_reimbursement_add(request):
@@ -663,10 +775,26 @@ def manage_unreimbursed_invoices(request):
     # 获取未报账的发票
     invoices = Invoice.objects.filter(
         reimbursementrecord__isnull=True
-    ).values('id', 'invoice_number', 'amount', 'reimbursement_person')
+    ).values(
+        'id', 
+        'invoice_number', 
+        'amount', 
+        'reimbursement_person',
+        'invoice_date',
+        'invoice_type',
+        'expense_type__name'
+    ).order_by('-invoice_date')  # 按发票日期倒序排序
+    
+    # 转换为列表并处理数据
+    invoice_list = list(invoices)
+    for invoice in invoice_list:
+        invoice['amount'] = float(invoice['amount'])
+        invoice['invoice_date'] = invoice['invoice_date'].strftime('%Y-%m-%d')
+        invoice['invoice_type_display'] = dict(Invoice.INVOICE_TYPES).get(invoice['invoice_type'])
+        invoice['expense_type_name'] = invoice['expense_type__name']
     
     return JsonResponse({
-        'invoices': list(invoices)
+        'invoices': invoice_list
     })
 
 @login_required
@@ -674,7 +802,7 @@ def manage_reimbursement_detail(request, pk):
     record = get_object_or_404(ReimbursementRecord, pk=pk)
     context = {
         'record': record,
-        'invoices': record.invoices.all()
+        'invoices': record.invoices.all().order_by('-invoice_date')  # 按发票日期倒序排序
     }
     return render(request, 'invoices/manage/reimbursement_detail.html', context)
 
@@ -734,6 +862,12 @@ def manage_reimbursement_remove_invoice(request, pk, invoice_pk):
             print(traceback.format_exc())  # 打印详细错误信息到控制台
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+@login_required
+def manage_reimbursement_delete(request, pk):
+    record = get_object_or_404(ReimbursementRecord, pk=pk)
+    record.delete()
+    return redirect('invoices:manage_reimbursement_list')
 
 @login_required
 def manage_reimbursement_batch_remove_invoices(request, pk):

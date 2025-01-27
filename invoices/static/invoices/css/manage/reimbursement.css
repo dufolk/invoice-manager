@@ -16,7 +16,7 @@
 
 .invoice-selector {
     max-height: 300px;
-    overflow-y: auto;
+    /* overflow-y: auto; */
     background: rgba(13, 25, 76, 0.5);
     border: 1px solid rgba(0, 198, 255, 0.1);
     border-radius: 4px;

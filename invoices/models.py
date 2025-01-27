@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 from django.db.models import Sum
+from decimal import Decimal
 
 class ExpenseType(models.Model):
     """费用类型模型"""
@@ -207,7 +208,9 @@ class FundRecord(models.Model):
         if not self.pk:
             # 获取最新的记录
             latest_record = FundRecord.objects.order_by('-record_date', '-created_at').first()
-            previous_balance = latest_record.balance if latest_record else 0
+            previous_balance = latest_record.balance if latest_record else Decimal('0')
+            # 确保 amount 是 Decimal 类型
+            self.amount = Decimal(str(self.amount))
             self.balance = previous_balance + self.amount
         super().save(*args, **kwargs)
 
