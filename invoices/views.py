@@ -113,8 +113,9 @@ def manage_login(request):
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         
-        if user is not None and user.is_staff:
+        if user is not None:
             login(request, user)
+            messages.success(request, f'欢迎回来，{user.get_full_name() or user.username}')
             return redirect('invoices:manage_dashboard')
         else:
             messages.error(request, '用户名或密码错误')
@@ -128,12 +129,25 @@ def manage_logout(request):
 
 @login_required
 def manage_dashboard(request):
-    context = {
-        'invoice_count': Invoice.objects.count(),
-        'total_amount': Invoice.objects.aggregate(Sum('amount'))['amount__sum'] or 0,
-        'expense_type_count': ExpenseType.objects.count(),
-        'recent_invoices': Invoice.objects.all().order_by('-invoice_date')[:5],  # 最近5条记录
-    }
+    if request.user.is_staff:
+        # 管理员看到所有数据
+        context = {
+            'invoice_count': Invoice.objects.count(),
+            'total_amount': Invoice.objects.aggregate(Sum('amount'))['amount__sum'] or 0,
+            'expense_type_count': ExpenseType.objects.count(),
+            'recent_invoices': Invoice.objects.all().order_by('-invoice_date')[:5],
+        }
+    else:
+        # 普通用户只看到自己的数据
+        user_invoices = Invoice.objects.filter(reimbursement_person=request.user.get_full_name())
+        context = {
+            'invoice_count': user_invoices.count(),
+            'total_amount': user_invoices.aggregate(Sum('amount'))['amount__sum'] or 0,
+            'recent_invoices': user_invoices.order_by('-invoice_date')[:5],
+        }
+    
+    # 添加用户类型到上下文
+    context['is_staff'] = request.user.is_staff
     return render(request, 'invoices/manage/dashboard.html', context)
 
 @login_required

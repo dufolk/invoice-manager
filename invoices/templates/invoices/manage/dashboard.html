@@ -1,43 +1,47 @@
 {% extends 'invoices/manage/base.html' %}
 
-{% block title %}控制台 - 525实验室发票管理系统{% endblock %}
+{% block title %}
+    {% if is_staff %}管理员控制台{% else %}个人中心{% endif %} - 525实验室发票管理系统
+{% endblock %}
 
 {% block content %}
-<div class="dashboard-header">
-    <h1>控制台</h1>
+<div class="page-header">
+    <h1>{% if is_staff %}管理员控制台{% else %}个人中心{% endif %}</h1>
 </div>
 
 <div class="dashboard-stats">
     <div class="stat-card">
-        <div class="stat-icon">📊</div>
+        <div class="stat-icon">📄</div>
         <div class="stat-value">{{ invoice_count }}</div>
-        <div class="stat-label">发票总数</div>
+        <div class="stat-label">{% if is_staff %}总发票数{% else %}我的发票数{% endif %}</div>
     </div>
     <div class="stat-card">
         <div class="stat-icon">💰</div>
         <div class="stat-value">¥{{ total_amount|floatformat:2 }}</div>
-        <div class="stat-label">总金额</div>
+        <div class="stat-label">{% if is_staff %}总金额{% else %}我的报销总额{% endif %}</div>
     </div>
+    {% if is_staff %}
     <div class="stat-card">
         <div class="stat-icon">📁</div>
         <div class="stat-value">{{ expense_type_count }}</div>
         <div class="stat-label">费用类型数</div>
     </div>
+    {% endif %}
 </div>
 
 <div class="dashboard-grid">
     <div class="dashboard-card">
-        <h3>最近发票记录</h3>
+        <h3>{% if is_staff %}最近发票记录{% else %}我的最近发票{% endif %}</h3>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>发票号</th>
                         <th>类型</th>
-                        <th>费用类型</th>
                         <th>金额</th>
-                        <th>报销人</th>
+                        {% if is_staff %}<th>报销人</th>{% endif %}
                         <th>发票日期</th>
+                        <th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,14 +49,20 @@
                     <tr>
                         <td>{{ invoice.invoice_number }}</td>
                         <td>{{ invoice.get_invoice_type_display }}</td>
-                        <td>{{ invoice.expense_type.name }}</td>
                         <td>¥{{ invoice.amount|floatformat:2 }}</td>
-                        <td>{{ invoice.reimbursement_person }}</td>
+                        {% if is_staff %}<td>{{ invoice.reimbursement_person }}</td>{% endif %}
                         <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
+                        <td>
+                            <a href="{% url 'invoices:manage_invoice_edit' invoice.id %}" class="btn-icon" title="查看详情">
+                                👁️
+                            </a>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="empty-message">暂无发票记录</td>
+                        <td colspan="{% if is_staff %}6{% else %}5{% endif %}" class="empty-message">
+                            暂无发票记录
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -60,4 +70,5 @@
         </div>
     </div>
 </div>
+
 {% endblock %} 

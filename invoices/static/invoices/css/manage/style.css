@@ -1463,3 +1463,29 @@ tr:hover .issue-icon {
 .login-btn {
     width: 100%;
 }
+
+/* 登录错误消息样式 */
+.error-messages {
+    margin-top: 15px;
+}
+
+.error-message {
+    color: #ff4444;
+    background: rgba(255, 68, 68, 0.1);
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* 登录成功消息样式 */
+.success-message {
+    color: #4CAF50;
+    background: rgba(76, 175, 80, 0.1);
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    text-align: center;
+}
