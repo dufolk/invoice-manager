@@ -6,7 +6,7 @@
 <div class="login-container">
     <div class="login-box">
         <h2>用户登录</h2>
-        <form method="post" action="{% url 'invoices:manage_login' %}">
+        <form method="post">
             {% csrf_token %}
             <div class="form-group">
                 <input type="text" name="username" placeholder="用户名" required>
@@ -18,7 +18,9 @@
             {% if messages %}
             <div class="error-messages">
                 {% for message in messages %}
-                <div class="error-message">{{ message }}</div>
+                <div class="{% if message.tags %}{{ message.tags }}{% endif %}-message">
+                    {{ message }}
+                </div>
                 {% endfor %}
             </div>
             {% endif %}

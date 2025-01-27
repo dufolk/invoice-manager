@@ -9,6 +9,8 @@ urlpatterns = [
     path('manage/', views.manage_dashboard, name='manage_dashboard'),
     path('manage/login/', views.manage_login, name='manage_login'),
     path('manage/logout/', views.manage_logout, name='manage_logout'),
+    # 添加数据 API 路由到发票相关路由之前
+    path('manage/invoices/data/', views.manage_invoice_list_data, name='manage_invoice_list_data'),
     path('manage/invoices/', views.manage_invoice_list, name='manage_invoice_list'),
     path('manage/invoices/add/', views.manage_invoice_add, name='manage_invoice_add'),
     path('manage/invoices/<int:pk>/edit/', views.manage_invoice_edit, name='manage_invoice_edit'),
@@ -46,4 +48,6 @@ urlpatterns = [
     path('manage/fund/add/', views.manage_fund_add, name='manage_fund_add'),
     path('manage/fund/<int:pk>/edit/', views.manage_fund_edit, name='manage_fund_edit'),
     path('manage/fund/<int:pk>/delete/', views.manage_fund_delete, name='manage_fund_delete'),
+    path('manage/reimbursement/data/', views.manage_reimbursement_list_data, name='manage_reimbursement_list_data'),
+    path('manage/fund/data/', views.manage_fund_list_data, name='manage_fund_list_data'),
 ] 

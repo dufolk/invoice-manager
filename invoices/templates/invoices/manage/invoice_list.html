@@ -16,22 +16,20 @@
 <div class="filter-bar">
     <form method="get" class="filter-form">
         <div class="form-group">
-            <input type="text" name="search" placeholder="搜索发票号或报销人" value="{{ request.GET.search }}">
+            <input type="text" name="search" placeholder="{% if user.is_staff %}搜索发票号或报销人{% else %}搜索发票号{% endif %}" value="{{ request.GET.search }}">
         </div>
         <div class="form-group">
             <select name="type">
                 <option value="">所有类型</option>
-                <option value="DAILY" {% if request.GET.type == 'DAILY' %}selected{% endif %}>日常发票</option>
-                <option value="TRAVEL" {% if request.GET.type == 'TRAVEL' %}selected{% endif %}>差旅发票</option>
+                <option value="DAILY">日常发票</option>
+                <option value="TRAVEL">差旅发票</option>
             </select>
         </div>
         <div class="form-group">
             <select name="expense_type">
                 <option value="">所有费用类型</option>
                 {% for type in expense_types %}
-                <option value="{{ type.id }}" {% if request.GET.expense_type == type.id|stringformat:"i" %}selected{% endif %}>
-                    {{ type.name }}
-                </option>
+                <option value="{{ type.id }}">{{ type.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -39,9 +37,7 @@
             <select name="year">
                 <option value="">所有年份</option>
                 {% for year in available_years %}
-                <option value="{{ year }}" {% if request.GET.year == year|stringformat:"i" %}selected{% endif %}>
-                    {{ year }}年
-                </option>
+                <option value="{{ year }}">{{ year }}年</option>
                 {% endfor %}
             </select>
         </div>
@@ -49,16 +45,10 @@
             <select name="month">
                 <option value="">所有月份</option>
                 {% for month in available_months %}
-                <option value="{{ month }}" {% if request.GET.month == month|stringformat:"i" %}selected{% endif %}>
-                    {{ month }}月
-                </option>
+                <option value="{{ month }}">{{ month }}月</option>
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn btn-filter">
-            <span class="icon">🔍</span>
-            搜索
-        </button>
     </form>
 </div>
 
@@ -72,12 +62,48 @@
                         <th width="40">
                             <input type="checkbox" id="select-all">
                         </th>
-                        <th>发票号</th>
-                        <th>类型</th>
-                        <th>费用类型</th>
-                        <th>金额</th>
-                        <th>报销人</th>
-                        <th>发票日期</th>
+                        <th>
+                            <a href="#" data-sort="invoice_number" 
+                               class="{% if current_sort == 'invoice_number' %}{% if current_order == 'asc' %}asc{% else %}desc{% endif %}{% endif %}">
+                                发票号
+                            </a>
+                        </th>
+                        <th>
+                            <a href="#" data-sort="invoice_type"
+                               class="{% if current_sort == 'invoice_type' %}{% if current_order == 'asc' %}asc{% else %}desc{% endif %}{% endif %}">
+                                发票类型
+                            </a>
+                        </th>
+                        <th>
+                            <a href="#" data-sort="expense_type"
+                               class="{% if current_sort == 'expense_type' %}{% if current_order == 'asc' %}asc{% else %}desc{% endif %}{% endif %}">
+                                费用类型
+                            </a>
+                        </th>
+                        <th>
+                            <a href="#" data-sort="amount"
+                               class="{% if current_sort == 'amount' %}{% if current_order == 'asc' %}asc{% else %}desc{% endif %}{% endif %}">
+                                金额
+                            </a>
+                        </th>
+                        <th>
+                            <a href="#" data-sort="reimbursement_person"
+                               class="{% if current_sort == 'reimbursement_person' %}{% if current_order == 'asc' %}asc{% else %}desc{% endif %}{% endif %}">
+                                报销人
+                            </a>
+                        </th>
+                        <th>
+                            <a href="#" data-sort="invoice_date"
+                               class="{% if current_sort == 'invoice_date' %}{% if current_order == 'asc' %}asc{% else %}desc{% endif %}{% endif %}">
+                                发票日期
+                            </a>
+                        </th>
+                        <th>
+                            <a href="#" data-sort="reimbursement_status"
+                               class="{% if current_sort == 'reimbursement_status' %}{% if current_order == 'asc' %}asc{% else %}desc{% endif %}{% endif %}">
+                                报销状态
+                            </a>
+                        </th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -107,6 +133,7 @@
                         <td>¥{{ invoice.amount|floatformat:2 }}</td>
                         <td>{{ invoice.reimbursement_person }}</td>
                         <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
+                        <td>{{ invoice.get_reimbursement_status_display }}</td>
                         <td class="actions">
                             <a href="{% url 'invoices:manage_invoice_edit' invoice.id %}" class="btn-icon" title="编辑" onclick="window.location.href=this.href; return false;">
                                 ✏️
@@ -155,9 +182,11 @@
         <button id="delete-btn" class="btn btn-danger" disabled>
             <span class="icon">🗑️</span>删除
         </button>
+        {% if user.is_staff %}
         <button class="btn btn-chart" onclick="showPersonalStats()">
             <span class="icon">📊</span>个人报销统计
         </button>
+        {% endif %}
         <button class="btn btn-chart" onclick="showExpenseTypeStats()">
             <span class="icon">📈</span>费用类型分析
         </button>
@@ -313,7 +342,14 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="{% static 'invoices/js/echarts.min.js' %}"></script>
 <script src="{% static 'invoices/js/invoice-detail.js' %}"></script>
 <script src="{% static 'invoices/js/invoice-stats.js' %}"></script>
+<script>
+    const INVOICE_DATA_URL = "{% url 'invoices:manage_invoice_list_data' %}";
+    const INVOICE_EDIT_URL = "/manage/invoices/";
+    const INVOICE_DELETE_URL = "/manage/invoices/";
+    const INVOICE_DETAIL_URL = "/manage/invoice/";
+</script>
+<script src="{% static 'invoices/js/invoice-list.js' %}"></script>
 {% endblock %} 

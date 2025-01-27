@@ -13,10 +13,14 @@
         <div class="sidebar-header">
             <div class="user-info">
                 <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                {% if user.is_staff %}
                 <div class="user-role">管理员</div>
+                {% endif %}
             </div>
         </div>
         <ul class="nav-links">
+            {% if user.is_staff %}
+            {# 管理员可见的导航项 #}
             <li><a href="{% url 'invoices:manage_dashboard' %}" class="{% if request.resolver_match.url_name == 'manage_dashboard' %}active{% endif %}">
                 <span class="icon">📊</span>控制台
             </a></li>
@@ -32,6 +36,15 @@
             <li><a href="{% url 'invoices:manage_expense_type_list' %}" class="{% if 'expense_type' in request.resolver_match.url_name %}active{% endif %}">
                 <span class="icon">📁</span>费用类型
             </a></li>
+            {% else %}
+            {# 普通用户可见的导航项 #}
+            <li><a href="{% url 'invoices:manage_dashboard' %}" class="{% if request.resolver_match.url_name == 'manage_dashboard' %}active{% endif %}">
+                <span class="icon">👤</span>个人中心
+            </a></li>
+            <li><a href="{% url 'invoices:manage_invoice_list' %}" class="{% if 'invoice' in request.resolver_match.url_name %}active{% endif %}">
+                <span class="icon">📄</span>我的发票
+            </a></li>
+            {% endif %}
             <li class="nav-divider"></li>
             <li><a href="{% url 'invoices:dashboard' %}" class="return-site">
                 <span class="icon">🏠</span>返回站点

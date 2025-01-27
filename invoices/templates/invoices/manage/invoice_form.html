@@ -63,8 +63,26 @@
             <div class="form-group">
                 <label for="reimbursement_person">报销人*</label>
                 <input type="text" id="reimbursement_person" name="reimbursement_person" required
-                       value="{{ invoice.reimbursement_person|default:'' }}">
+                       value="{% if user.is_staff %}{{ invoice.reimbursement_person }}{% else %}{{ user.get_full_name|default:user.username }}{% endif %}" {% if user.is_authenticated and not user.is_staff %}readonly{% endif %}>
             </div>
+
+            <div class="form-group">
+                <label for="reimbursement_status">报销状态</label>
+                <select id="reimbursement_status" name="reimbursement_status" required {% if user.is_authenticated and not user.is_staff %}disabled{% endif %}>
+                    <option value="NOT_SUBMITTED" {% if invoice.reimbursement_status == 'NOT_SUBMITTED' %}selected{% endif %}>未提交</option>
+                    <option value="PENDING" {% if invoice.reimbursement_status == 'PENDING' %}selected{% endif %}>未报销</option>
+                    <option value="NOT_TRANSFERRED" {% if invoice.reimbursement_status == 'NOT_TRANSFERRED' %}selected{% endif %}>未转入管理员账户</option>
+                    <option value="TRANSFERRED" {% if invoice.reimbursement_status == 'TRANSFERRED' %}selected{% endif %}>已转入管理员账户</option>
+                </select>
+            </div>
+
+            {% if invoice and invoice.reimbursement_status == 'NOT_TRANSFERRED' or user.is_staff %}
+            <div class="form-group full-width">
+                <label for="status_remarks">状态备注</label>
+                <textarea id="status_remarks" name="status_remarks" rows="2" {% if user.is_authenticated and not user.is_staff %}readonly{% endif %}>{{ invoice.status_remarks }}</textarea>
+                <small class="help-text">当状态为"未转入管理员账户"时的说明</small>
+            </div>
+            {% endif %}
 
             <div class="form-group full-width">
                 <label for="details">报销内容明细</label>
@@ -79,7 +97,6 @@
             <div class="form-group">
                 <label for="file">发票文件</label>
                 <div class="file-upload-group">
-                    {% csrf_token %}
                     <input type="file" id="file" name="file" accept="image/*,application/pdf" {% if not invoice %}required{% endif %}>
                     <button type="button" id="parse-btn" class="btn btn-primary">
                         <span class="icon">📄</span>解析
@@ -198,32 +215,28 @@
         <h3>发票解析结果确认</h3>
         <div class="parse-result">
             <div class="result-item">
-                <label>发票号码：</label>
-                <span id="modal-invoice-num"></span>
+                <span>发票号：</span><span id="modal-invoice-num"></span>
             </div>
             <div class="result-item">
-                <label>发票金额：</label>
-                <span id="modal-amount"></span>
+                <span>金额：</span><span id="modal-amount"></span>
             </div>
             <div class="result-item">
-                <label>发票日期：</label>
-                <span id="modal-date"></span>
+                <span>发票日期：</span><span id="modal-date"></span>
             </div>
             <div class="result-item">
-                <label>报销内容：</label>
-                <span id="modal-details"></span>
+                <span>报销内容：</span><span id="modal-details"></span>
             </div>
             <div class="result-item">
-                <label>备注：</label>
-                <span id="modal-remarks"></span>
+                <span>备注：</span><span id="modal-remarks"></span>
             </div>
         </div>
         <div class="modal-actions">
-            <button type="button" class="btn btn-primary" id="confirm-parse">确认填充</button>
+            <button type="button" class="btn" id="confirm-parse">确认</button>
             <button type="button" class="btn" id="cancel-parse">取消</button>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -326,7 +339,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             showLoading('正在保存...');  // 修改加载提示文本
-            
             const formData = new FormData(this);
             const response = await fetch(this.action, {
                 method: 'POST',

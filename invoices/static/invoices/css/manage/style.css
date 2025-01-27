@@ -373,16 +373,13 @@ td {
 }
 
 .filter-form {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr 1fr 1fr 1fr;
     gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
 }
 
 .filter-form .form-group {
     margin: 0;
-    flex: 1;
-    min-width: 180px;
 }
 
 .filter-form input,
@@ -1153,6 +1150,7 @@ select,
     margin-bottom: 8px;
     color: #7EAEFF;
     font-size: 13px;
+    min-width: 100px;
 }
 
 /* 移除添加按钮相关样式 */
@@ -1488,4 +1486,139 @@ tr:hover .issue-icon {
     margin-bottom: 10px;
     font-size: 14px;
     text-align: center;
+}
+
+/* 表头排序样式 */
+.table-responsive th {
+    position: relative;
+    padding-right: 25px; /* 为箭头留出空间 */
+    text-align: center; /* 文字居中 */
+}
+
+.table-responsive th a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center; /* 文字居中 */
+    position: relative;
+    padding-right: 15px; /* 为箭头留出空间 */
+}
+
+.table-responsive th a::after {
+    content: "▼";
+    font-size: 0.8em;
+    position: absolute;
+    right: 0; /* 箭头靠右 */
+    opacity: 0.3;
+}
+
+.table-responsive th a.asc::after {
+    content: "▲";
+    opacity: 1;
+    color: #1a73e8;
+}
+
+.table-responsive th a.desc::after {
+    content: "▼";
+    opacity: 1;
+    color: #1a73e8;
+}
+
+/* 确保表头文字不会换行 */
+.table-responsive th {
+    white-space: nowrap;
+}
+
+/* 调整表格单元格的对齐方式 */
+.table-responsive td {
+    text-align: center; /* 所有单元格居中对齐 */
+}
+
+/* 特定列的对齐方式 */
+.table-responsive td.description-cell,
+.table-responsive td.text-left {
+    text-align: left; /* 描述等文本内容左对齐 */
+}
+
+.table-responsive td.amount,
+.table-responsive td.number {
+    text-align: right; /* 金额和数字右对齐 */
+}
+
+.no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 0;
+    color: #7EAEFF;
+}
+
+.no-data .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.7;
+}
+
+.no-data p {
+    font-size: 16px;
+    margin: 0;
+    opacity: 0.8;
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.clickable-row:hover {
+    background-color: rgba(0, 198, 255, 0.05);
+}
+
+/* 确保按钮在行hover时仍然可见 */
+.clickable-row:hover .actions {
+    opacity: 1;
+}
+
+/* 发票状态样式 */
+.status {
+    text-align: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.status-not-submitted {
+    color: #ff4444;
+    background: rgba(255, 68, 68, 0.1);
+}
+
+.status-pending {
+    color: #FFB020;
+    background: rgba(255, 176, 32, 0.1);
+}
+
+.status-not-transferred {
+    color: #1a73e8;
+    background: rgba(26, 115, 232, 0.1);
+}
+
+.status-transferred {
+    color: #4CAF50;
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.help-text {
+    display: block;
+    margin-top: 4px;
+    color: #7EAEFF;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* 状态备注文本框样式 */
+#status_remarks {
+    min-height: 60px;
+    font-size: 14px;
+    line-height: 1.4;
 }

@@ -11,6 +11,24 @@ class ExpenseType(models.Model):
         ('TRAVEL', '差旅费用'),
     ]
     
+    INITIAL_EXPENSE_TYPES = {
+        'DAILY': [
+            '书报杂志订阅费',
+            '印刷费',
+            '邮寄费',
+            '仪器设备维修费',
+            '会议费',
+            '专用材料费',
+            '交通费',
+            '其他'
+        ],
+        'TRAVEL': [
+            '交通费',
+            '住宿费',
+            '其他'
+        ]
+    }
+    
     name = models.CharField(max_length=50, verbose_name='类型名称')
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='DAILY', 
                               verbose_name='费用分类')
@@ -89,6 +107,12 @@ class Invoice(models.Model):
 
     def check_potential_issues(self):
         """检查发票是否可能存在问题"""
+        # 如果状态是"未转入管理员账户"，标记为可能存在问题
+        if self.reimbursement_status == 'NOT_TRANSFERRED':
+            self.has_potential_issue = True
+            return
+
+        # 其他原有的检查条件
         if not self.attachment:  # 无附件时
             if self.invoice_type == 'DAILY' and float(self.amount) > 1000:
                 self.has_potential_issue = True

@@ -16,6 +16,7 @@ import tempfile
 from scripts.invoice_parser import get_invoice_info
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 def dashboard(request):
     # 基础统计数据
@@ -103,6 +104,7 @@ def admin_logout(request):
     logout(request)
     return redirect('dashboard')
 
+@ensure_csrf_cookie
 def manage_login(request):
     # 如果用户已登录，直接重定向到管理面板
     if request.user.is_authenticated:
@@ -119,6 +121,7 @@ def manage_login(request):
             return redirect('invoices:manage_dashboard')
         else:
             messages.error(request, '用户名或密码错误')
+            return render(request, 'invoices/manage/login.html')
     
     return render(request, 'invoices/manage/login.html')
 
@@ -152,36 +155,12 @@ def manage_dashboard(request):
 
 @login_required
 def manage_invoice_list(request):
-    # 获取查询参数
+    # 获取查询参数，只用于初始化筛选条件
     search_query = request.GET.get('search', '')
     invoice_type = request.GET.get('type', '')
     expense_type_id = request.GET.get('expense_type', '')
     year = request.GET.get('year', '')
     month = request.GET.get('month', '')
-
-    # 构建查询
-    invoices = Invoice.objects.all()
-    
-    if search_query:
-        invoices = invoices.filter(
-            Q(invoice_number__icontains=search_query) |
-            Q(reimbursement_person__icontains=search_query)
-        )
-    
-    if invoice_type:
-        invoices = invoices.filter(invoice_type=invoice_type)
-    
-    if expense_type_id:
-        invoices = invoices.filter(expense_type_id=expense_type_id)
-        
-    if year:
-        invoices = invoices.filter(invoice_date__year=int(year))
-        
-    if month:
-        invoices = invoices.filter(invoice_date__month=int(month))
-
-    # 计算筛选结果的总金额
-    total_amount = invoices.aggregate(Sum('amount'))['amount__sum'] or 0
 
     # 获取可用的年份列表
     available_years = (Invoice.objects
@@ -189,33 +168,19 @@ def manage_invoice_list(request):
                       .values_list('invoice_date__year', flat=True)
                       .distinct())
 
-    # 排序
-    invoices = invoices.order_by('-invoice_date')
-
-    # 分页
-    paginator = Paginator(invoices, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
     context = {
-        'invoices': page_obj,
         'expense_types': ExpenseType.objects.all(),
         'available_years': available_years,
         'available_months': range(1, 13),
-        'is_paginated': page_obj.has_other_pages(),
-        'page_obj': page_obj,
-        'total_amount': total_amount,  # 添加总金额到上下文
+        'is_staff': request.user.is_staff,
+        # 移除了 invoices, total_amount, current_sort, current_order 等
+        # 因为这些数据现在由 AJAX 请求获取
     }
     
     return render(request, 'invoices/manage/invoice_list.html', context)
 
 @login_required
 def manage_invoice_add(request):
-    context = {
-        'expense_types': ExpenseType.objects.all(),
-        'invoice_type': 'DAILY'
-    }
-
     if request.method == 'POST':
         try:
             # 检查发票号是否已存在
@@ -227,18 +192,26 @@ def manage_invoice_add(request):
                 })
 
             with transaction.atomic():
-                # 创建发票
-                invoice = Invoice.objects.create(
-                    invoice_number=invoice_number,
-                    invoice_type=request.POST['invoice_type'],
-                    amount=float(request.POST['amount']),
-                    details=request.POST.get('details', ''),
-                    remarks=request.POST.get('remarks', ''),
-                    invoice_date=request.POST['invoice_date'],
-                    file=request.FILES['file'],
-                    expense_type_id=request.POST['expense_type'],
-                    reimbursement_person=request.POST['reimbursement_person']
-                )
+                # 创建发票基本信息
+                invoice_data = {
+                    'invoice_number': invoice_number,
+                    'invoice_type': request.POST['invoice_type'],
+                    'amount': float(request.POST['amount']),
+                    'details': request.POST.get('details', ''),
+                    'remarks': request.POST.get('remarks', ''),
+                    'invoice_date': request.POST['invoice_date'],
+                    'expense_type_id': request.POST['expense_type'],
+                    'reimbursement_person': request.POST['reimbursement_person']
+                }
+                
+                # 如果是管理员，添加报销状态相关字段
+                if request.user.is_staff:
+                    invoice_data.update({
+                        'reimbursement_status': request.POST.get('reimbursement_status', 'NOT_SUBMITTED'),
+                        'status_remarks': request.POST.get('status_remarks', '')
+                    })
+                
+                invoice = Invoice.objects.create(**invoice_data)
                 
                 # 处理发票文件上传
                 if 'file' in request.FILES:
@@ -278,7 +251,7 @@ def manage_invoice_add(request):
                 'error': str(e)
             })
     
-    return render(request, 'invoices/manage/invoice_form.html', context)
+    return render(request, 'invoices/manage/invoice_form.html', {'expense_types': ExpenseType.objects.all(), 'invoice_type': 'DAILY'})
 
 @login_required
 def manage_invoice_edit(request, pk):
@@ -296,6 +269,11 @@ def manage_invoice_edit(request, pk):
                 invoice.invoice_date = request.POST['invoice_date']
                 invoice.expense_type_id = request.POST['expense_type']
                 invoice.reimbursement_person = request.POST['reimbursement_person']
+                
+                # 如果是管理员，更新报销状态相关字段
+                if request.user.is_staff:
+                    invoice.reimbursement_status = request.POST.get('reimbursement_status', 'NOT_SUBMITTED')
+                    invoice.status_remarks = request.POST.get('status_remarks', '')
                 
                 # 处理发票文件上传
                 if 'file' in request.FILES:
@@ -510,15 +488,21 @@ def manage_invoice_detail(request, pk):
 @login_required
 def manage_invoice_batch_delete(request):
     if request.method == 'POST':
-        invoice_ids = request.POST.getlist('invoice_ids')
-        if invoice_ids:
-            try:
+        # 获取请求体中的发票 ID 列表
+        try:
+            data = json.loads(request.body)
+            invoice_ids = data.get('invoice_ids', [])
+            
+            if invoice_ids:
+                # 批量删除发票
                 Invoice.objects.filter(id__in=invoice_ids).delete()
-                messages.success(request, f'成功删除 {len(invoice_ids)} 张发票')
-            except Exception as e:
-                messages.error(request, f'删除失败：{str(e)}')
-        return redirect('invoices:manage_invoice_list')
-    return redirect('invoices:manage_invoice_list')
+                return JsonResponse({'success': True, 'message': f'成功删除 {len(invoice_ids)} 张发票'})
+            else:
+                return JsonResponse({'success': False, 'error': '未提供发票 ID'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
 
 @login_required
 def parse_invoice(request):
@@ -905,3 +889,187 @@ def manage_reimbursement_batch_remove_invoices(request, pk):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+@login_required
+def manage_invoice_list_data(request):
+    # 获取查询参数
+    search_query = request.GET.get('search', '')
+    invoice_type = request.GET.get('type', '')
+    expense_type_id = request.GET.get('expense_type', '')
+    year = request.GET.get('year', '')
+    month = request.GET.get('month', '')
+    sort_by = request.GET.get('sort_by', 'invoice_date')
+    order = request.GET.get('order', 'desc')
+    page = request.GET.get('page', 1)
+
+    # 构建查询
+    if request.user.is_staff:
+        invoices = Invoice.objects.all()
+        if search_query:
+            invoices = invoices.filter(
+                Q(invoice_number__icontains=search_query) |
+                Q(reimbursement_person__icontains=search_query)
+            )
+    else:
+        invoices = Invoice.objects.filter(reimbursement_person=request.user.get_full_name())
+        if search_query:
+            invoices = invoices.filter(invoice_number__icontains=search_query)
+
+    # 应用其他筛选条件...
+    if invoice_type:
+        invoices = invoices.filter(invoice_type=invoice_type)
+    
+    if expense_type_id:
+        invoices = invoices.filter(expense_type_id=expense_type_id)
+        
+    if year:
+        invoices = invoices.filter(invoice_date__year=int(year))
+        
+    if month:
+        invoices = invoices.filter(invoice_date__month=int(month))
+
+    # 应用排序
+    if order == 'asc':
+        invoices = invoices.order_by(sort_by)
+    else:
+        invoices = invoices.order_by(f'-{sort_by}')
+
+    # 分页
+    paginator = Paginator(invoices, 10)
+    page_obj = paginator.get_page(page)
+
+    # 构建返回数据
+    data = {
+        'invoices': [{
+            'id': invoice.id,
+            'invoice_number': invoice.invoice_number,
+            'invoice_type': invoice.get_invoice_type_display(),
+            'expense_type': invoice.expense_type.name,
+            'amount': float(invoice.amount),
+            'reimbursement_person': invoice.reimbursement_person,
+            'invoice_date': invoice.invoice_date.strftime('%Y-%m-%d'),
+            'has_potential_issue': invoice.has_potential_issue,
+            'reimbursement_status': invoice.reimbursement_status,
+        } for invoice in page_obj],
+        'total_amount': float(invoices.aggregate(Sum('amount'))['amount__sum'] or 0),
+        'has_previous': page_obj.has_previous(),
+        'has_next': page_obj.has_next(),
+        'page': page_obj.number,
+        'total_pages': page_obj.paginator.num_pages,
+    }
+    
+    return JsonResponse(data)
+
+@login_required
+def manage_reimbursement_list_data(request):
+    # 获取筛选参数
+    record_type = request.GET.get('type', '')
+    status = request.GET.get('status', '')
+    sort_by = request.GET.get('sort_by', 'reimbursement_date')
+    order = request.GET.get('order', 'desc')
+    page = request.GET.get('page', 1)
+    
+    # 构建查询
+    records = ReimbursementRecord.objects.all()
+    
+    if record_type:
+        records = records.filter(record_type=record_type)
+    if status:
+        records = records.filter(status=status)
+        
+    # 应用排序
+    if order == 'asc':
+        records = records.order_by(sort_by)
+    else:
+        records = records.order_by(f'-{sort_by}')
+    
+    # 分页
+    paginator = Paginator(records, 10)
+    page_obj = paginator.get_page(page)
+    
+    # 构建返回数据
+    data = {
+        'records': [{
+            'id': record.id,
+            'reimbursement_date': record.reimbursement_date.strftime('%Y-%m-%d'),
+            'record_type': record.get_record_type_display(),
+            'invoice_count': record.invoices.count(),
+            'total_amount': float(record.total_amount),
+            'status': record.get_status_display(),
+            'status_code': record.status,
+            'remarks': record.remarks or '-'
+        } for record in page_obj],
+        'has_previous': page_obj.has_previous(),
+        'has_next': page_obj.has_next(),
+        'page': page_obj.number,
+        'total_pages': page_obj.paginator.num_pages,
+    }
+    
+    return JsonResponse(data)
+
+@login_required
+def manage_fund_list_data(request):
+    # 获取查询参数
+    search_query = request.GET.get('search', '')
+    record_type = request.GET.get('type', '')
+    date = request.GET.get('date', '')
+    sort_by = request.GET.get('sort_by', 'record_date')
+    order = request.GET.get('order', 'desc')
+    page = request.GET.get('page', 1)
+    
+    # 构建查询
+    records = FundRecord.objects.all()
+    
+    if search_query:
+        records = records.filter(description__icontains=search_query)
+    
+    if record_type:
+        records = records.filter(record_type=record_type)
+        
+    if date:
+        records = records.filter(record_date=date)
+    
+    # 应用排序
+    if sort_by == 'amount':
+        # 如果是按金额排序，使用绝对值
+        if order == 'asc':
+            records = records.extra(
+                select={'abs_amount': 'ABS(amount)'}
+            ).order_by('abs_amount')
+        else:
+            records = records.extra(
+                select={'abs_amount': 'ABS(amount)'}
+            ).order_by('-abs_amount')
+    else:
+        # 其他字段正常排序
+        if order == 'asc':
+            records = records.order_by(sort_by)
+        else:
+            records = records.order_by(f'-{sort_by}')
+    
+    # 分页
+    paginator = Paginator(records, 10)
+    page_obj = paginator.get_page(page)
+    
+    # 获取最新余额
+    latest_record = FundRecord.objects.order_by('-record_date', '-created_at').first()
+    current_balance = float(latest_record.balance if latest_record else 0)
+    
+    # 构建返回数据
+    data = {
+        'records': [{
+            'id': record.id,
+            'record_date': record.record_date.strftime('%Y-%m-%d'),
+            'record_type': record.get_record_type_display(),
+            'amount': float(record.amount),
+            'balance': float(record.balance),
+            'description': record.description
+        } for record in page_obj],
+        'current_balance': current_balance,
+        'has_previous': page_obj.has_previous(),
+        'has_next': page_obj.has_next(),
+        'page': page_obj.number,
+        'total_pages': page_obj.paginator.num_pages,
+    }
+    
+    return JsonResponse(data)
