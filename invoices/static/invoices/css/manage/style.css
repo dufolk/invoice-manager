@@ -278,7 +278,7 @@ button:hover {
 /* 表格样式 */
 .table-responsive {
     overflow-x: auto;
-    margin: 0 -15px;
+    /* margin: 0 -15px; */
     padding: 0 15px;
     /* 最多显示 10行 */
     max-height: 1000px;

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth
-from .models import Invoice, ExpenseType, TravelInvoice, ReimbursementRecord, FundRecord
+from .models import Invoice, ExpenseType, TravelInvoice, ReimbursementRecord, FundRecord, TransportDetail, AccommodationDetail
 import json
 from datetime import datetime, timedelta, timezone
 from django.contrib.auth import authenticate, login, logout
@@ -235,6 +235,26 @@ def manage_invoice_add(request):
                         destination=request.POST['destination'],
                         expense_category=request.POST.get('expense_category', '')
                     )
+                    
+                    # 根据费用类型创建相应的明细
+                    expense_type_name = invoice.expense_type.name
+                    if expense_type_name == '交通费':
+                        TransportDetail.objects.create(
+                            travel_invoice=travel_invoice,
+                            transport_type=request.POST['transport_type'],
+                            departure_time=request.POST['departure_date'],
+                            departure_place=request.POST['departure_place'],
+                            destination=request.POST['destination'],
+                            seat_type=request.POST['seat_type']
+                        )
+                    elif expense_type_name == '住宿费':
+                        AccommodationDetail.objects.create(
+                            travel_invoice=travel_invoice,
+                            check_in_date=request.POST['check_in_date'],
+                            check_out_date=request.POST['check_out_date'],
+                            hotel_name=request.POST['hotel_name']
+                        )
+                    
                     # 重新检查问题（因为现在有了差旅信息）
                     invoice.check_potential_issues()
                     invoice.save()
@@ -282,6 +302,7 @@ def manage_invoice_edit(request, pk):
                 # 处理附件上传
                 if 'attachment' in request.FILES:
                     invoice.attachment = request.FILES['attachment']
+                
                 # 检查是否可能存在问题
                 invoice.check_potential_issues()
                 invoice.save()
@@ -305,6 +326,31 @@ def manage_invoice_edit(request, pk):
                         for key, value in travel_data.items():
                             setattr(travel_invoice, key, value)
                         travel_invoice.save()
+                    
+                    # 根据费用类型更新或创建相应的明细
+                    expense_type_name = invoice.expense_type.name
+                    if expense_type_name == '交通费':
+                        # 删除旧的交通明细
+                        TransportDetail.objects.filter(travel_invoice=travel_invoice).delete()
+                        # 创建新的交通明细
+                        TransportDetail.objects.create(
+                            travel_invoice=travel_invoice,
+                            transport_type=request.POST['transport_type'],
+                            departure_time=request.POST['departure_date'],
+                            departure_place=request.POST['departure_place'],
+                            destination=request.POST['destination'],
+                            seat_type=request.POST['seat_type']
+                        )
+                    elif expense_type_name == '住宿费':
+                        # 删除旧的住宿明细
+                        AccommodationDetail.objects.filter(travel_invoice=travel_invoice).delete()
+                        # 创建新的住宿明细
+                        AccommodationDetail.objects.create(
+                            travel_invoice=travel_invoice,
+                            check_in_date=request.POST['check_in_date'],
+                            check_out_date=request.POST['check_out_date'],
+                            hotel_name=request.POST['hotel_name']
+                        )
                     
                     # 重新检查问题（因为差旅信息可能已更新）
                     invoice.check_potential_issues()
@@ -740,9 +786,10 @@ def manage_reimbursement_add(request):
                     record.save()
                     
                     record.invoices.set(invoice_ids)
-                    # 更新发票的报销日期
+                    # 更新发票的报销日期和状态
                     Invoice.objects.filter(id__in=invoice_ids).update(
-                        reimbursement_date=record.reimbursement_date
+                        reimbursement_date=record.reimbursement_date,
+                        reimbursement_status='PENDING'  # 更新状态为"未报销"
                     )
                     
                 messages.success(request, '报账记录创建成功')
@@ -816,7 +863,8 @@ def manage_reimbursement_add_invoice(request, pk):
                 record.invoices.add(*invoice_ids)
                 # 更新发票的报销日期
                 Invoice.objects.filter(id__in=invoice_ids).update(
-                    reimbursement_date=record.reimbursement_date
+                    reimbursement_date=record.reimbursement_date,
+                    reimbursement_status='PENDING'  # 更新状态为"未报销"
                 )
                 # 更新总金额
                 record.update_total_amount()

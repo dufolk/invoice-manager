@@ -172,7 +172,7 @@ class TransportDetail(models.Model):
                                      verbose_name='差旅发票')
     transport_type = models.CharField(max_length=10, choices=TravelInvoice.TRANSPORT_TYPES, 
                                     verbose_name='交通类型')
-    departure_time = models.DateTimeField(verbose_name='出发时间')
+    departure_time = models.DateField(verbose_name='出发时间')
     departure_place = models.CharField(max_length=100, verbose_name='出发地')
     destination = models.CharField(max_length=100, verbose_name='目的地')
     seat_type = models.CharField(max_length=15, choices=SEAT_TYPES, verbose_name='座位类型')

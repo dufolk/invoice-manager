@@ -15,12 +15,38 @@
 }
 
 .invoice-selector {
-    max-height: 300px;
-    /* overflow-y: auto; */
-    background: rgba(13, 25, 76, 0.5);
-    border: 1px solid rgba(0, 198, 255, 0.1);
-    border-radius: 4px;
-    padding: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 1rem 0;
+}
+
+.invoice-selector table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.invoice-selector th,
+.invoice-selector td {
+    padding: 0.75rem;
+    text-align: left;
+    /* border-bottom: 1px solid #eee; */
+}
+
+.invoice-selector th {
+    /* background-color: #f8f9fa; */
+    font-weight: 600;
+}
+
+.form-actions {
+    position: sticky;
+    bottom: 0;
+    /* background-color: #fff; */
+    padding: 1rem;
+    /* border-top: 1px solid #eee; */
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
 }
 
 .invoice-item {
@@ -42,4 +68,4 @@
 
 .clickable-row:hover {
     background: rgba(0, 198, 255, 0.1);
-} 
+}

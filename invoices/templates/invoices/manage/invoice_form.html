@@ -39,7 +39,7 @@
                             {% endif %}
                         {% else %}
                             {% if invoice_type == 'DAILY' and type.category != 'TRAVEL' or invoice_type == 'TRAVEL' and type.category != 'DAILY' %}
-                                <option value="{{ type.id }}" {% if invoice.expense_type_id == type.id %}selected{% endif %}>
+                                <option value="{{ type.id }}">
                                     {{ type.name }}
                                 </option>
                             {% endif %}
@@ -124,25 +124,25 @@
             <h3>差旅信息</h3>
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="traveler">出差人*</label>
+                    <label for="traveler">出差人</label>
                     <input type="text" id="traveler" name="traveler" 
                            value="{{ invoice.travelinvoice.traveler|default:'' }}">
                 </div>
 
                 <div class="form-group">
-                    <label for="start_date">开始日期*</label>
+                    <label for="start_date">开始日期</label>
                     <input type="date" id="start_date" name="start_date"
                            value="{{ invoice.travelinvoice.start_date|date:'Y-m-d'|default:'' }}">
                 </div>
 
                 <div class="form-group">
-                    <label for="end_date">结束日期*</label>
+                    <label for="end_date">结束日期</label>
                     <input type="date" id="end_date" name="end_date"
                            value="{{ invoice.travelinvoice.end_date|date:'Y-m-d'|default:'' }}">
                 </div>
 
                 <div class="form-group">
-                    <label for="destination">出差地点*</label>
+                    <label for="destination">出差地点</label>
                     <input type="text" id="destination" name="destination"
                            value="{{ invoice.travelinvoice.destination|default:'' }}">
                 </div>
@@ -163,7 +163,7 @@
                     </div>
                     <div class="form-group">
                         <label>出发时间*</label>
-                        <input type="datetime-local" name="departure_time" required>
+                        <input type="date" name="departure_date" required>
                     </div>
                     <div class="form-group">
                         <label>出发地*</label>
@@ -272,14 +272,33 @@ document.addEventListener('DOMContentLoaded', function() {
         // 清空当前选项
         expenseTypeSelect.innerHTML = '';
         
-        // 根据发票类型筛选并添加对应的费用类型选项
-        {% for type in expense_types %}
-        if ((isTravel && "{{ type.category }}" === "TRAVEL") || 
-            (!isTravel && "{{ type.category }}" !== "TRAVEL")) {
-            const option = new Option("{{ type.name }}", "{{ type.id }}");
-            expenseTypeSelect.add(option);
-        }
-        {% endfor %}
+        // 根据是否是编辑状态设置默认选项
+        {% if invoice %}
+            // 编辑状态：使用当前发票的费用类型作为默认值
+            {% for type in expense_types %}
+                if ((isTravel && "{{ type.category }}" === "TRAVEL") || 
+                    (!isTravel && "{{ type.category }}" !== "TRAVEL")) {
+                    const option = new Option("{{ type.name }}", "{{ type.id }}");
+                    if ("{{ type.id }}" === "{{ invoice.expense_type_id }}") {
+                        option.selected = true;
+                    }
+                    expenseTypeSelect.add(option);
+                }
+            {% endfor %}
+        {% else %}
+            // 新建状态：添加"请选择费用类型"作为默认选项
+            const defaultOption = new Option("请选择费用类型", "");
+            expenseTypeSelect.add(defaultOption);
+            
+            // 添加其他选项
+            {% for type in expense_types %}
+                if ((isTravel && "{{ type.category }}" === "TRAVEL") || 
+                    (!isTravel && "{{ type.category }}" !== "TRAVEL")) {
+                    const option = new Option("{{ type.name }}", "{{ type.id }}");
+                    expenseTypeSelect.add(option);
+                }
+            {% endfor %}
+        {% endif %}
 
         // 如果是差旅发票，监听费用类型变化
         if (isTravel) {
