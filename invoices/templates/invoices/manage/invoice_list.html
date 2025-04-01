@@ -135,12 +135,17 @@
                         <td>{{ invoice.invoice_date|date:"Y-m-d" }}</td>
                         <td>{{ invoice.get_reimbursement_status_display }}</td>
                         <td class="actions">
-                            <a href="{% url 'invoices:manage_invoice_edit' invoice.id %}" class="btn-icon" title="编辑" onclick="window.location.href=this.href; return false;">
-                                ✏️
-                            </a>
-                            <a href="{% url 'invoices:manage_invoice_delete' invoice.id %}" class="btn-icon delete" title="删除">
-                                🗑️
-                            </a>
+                            {% if user.is_staff or invoice.reimbursement_status == 'NOT_SUBMITTED' %}
+                                <a href="{% url 'invoices:manage_invoice_edit' invoice.id %}" class="btn-icon" title="编辑">
+                                    ✏️
+                                </a>
+                                <a href="{% url 'invoices:manage_invoice_delete' invoice.id %}" class="btn-icon delete" title="删除">
+                                    🗑️
+                                </a>
+                            {% else %}
+                                <span class="btn-icon disabled" title="已提交的发票不可编辑">✏️</span>
+                                <span class="btn-icon disabled" title="已提交的发票不可删除">🗑️</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -338,6 +343,13 @@
         padding: 20px;
         color: #666;
     }
+    
+    /* 禁用按钮样式 */
+    .btn-icon.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    }
 </style>
 {% endblock %}
 
@@ -350,6 +362,7 @@
     const INVOICE_EDIT_URL = "/manage/invoices/";
     const INVOICE_DELETE_URL = "/manage/invoices/";
     const INVOICE_DETAIL_URL = "/manage/invoice/";
+    const isStaff = {% if user.is_staff %}true{% else %}false{% endif %};
 </script>
 <script src="{% static 'invoices/js/invoice-list.js' %}"></script>
 {% endblock %} 

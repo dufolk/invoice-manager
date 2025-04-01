@@ -83,11 +83,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const row = document.createElement('tr');
                 row.className = invoice.has_potential_issue ? 'has-issue clickable-row' : 'no-issue clickable-row';
                 row.dataset.invoiceId = invoice.id;
+                row.dataset.reimbursementStatus = invoice.reimbursement_status;
                 
                 // 获取状态显示样式
                 const statusClass = getStatusClass(invoice.reimbursement_status);
                 const statusText = getStatusText(invoice.reimbursement_status);
-                
                 row.innerHTML = `
                     <td>
                         <input type="checkbox" class="invoice-checkbox" value="${invoice.id}">
@@ -100,8 +100,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${invoice.invoice_date}</td>
                     <td class="status ${statusClass}">${statusText}</td>
                     <td class="actions">
-                        <a href="${INVOICE_EDIT_URL}${invoice.id}/edit/" class="btn-icon" title="编辑">✏️</a>
-                        <a href="#" onclick="confirmDelete(${invoice.id}); return false;" class="btn-icon delete" title="删除">🗑️</a>
+                        ${invoice.reimbursement_status == 'NOT_SUBMITTED' || isStaff ? `
+                            <a href="${INVOICE_EDIT_URL}${invoice.id}/edit/" class="btn-icon" title="编辑">✏️</a>
+                            <a href="#" onclick="confirmDelete(${invoice.id}); return false;" class="btn-icon delete" title="删除">🗑️</a>
+                        ` : `
+                            <span class="btn-icon disabled" title="已提交的发票不可编辑">✏️</span>
+                            <span class="btn-icon disabled" title="已提交的发票不可删除">🗑️</span>
+                        `}
                     </td>
                 `;
                 
@@ -268,7 +273,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const checkboxes = document.querySelectorAll('.invoice-checkbox');
         const deleteButton = document.getElementById('delete-btn');
         const anyChecked = Array.from(checkboxes).some(checkbox => checkbox.checked);
-        deleteButton.disabled = !anyChecked; // 如果没有选中任何复选框，则禁用删除按钮
+        
+        // 如果是普通用户，检查选中的发票状态
+        if (!isStaff) {
+            const selectedInvoices = Array.from(checkboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => {
+                    const row = checkbox.closest('tr');
+                    return {
+                        id: checkbox.value,
+                        status: row.dataset.reimbursementStatus
+                    };
+                });
+            
+            // 如果有任何非"未提交"状态的发票，禁用删除按钮
+            const hasNonSubmittedInvoice = selectedInvoices.some(invoice => 
+                invoice.status !== 'NOT_SUBMITTED'
+            );
+            
+            deleteButton.disabled = !anyChecked || hasNonSubmittedInvoice;
+        } else {
+            deleteButton.disabled = !anyChecked;
+        }
     }
 
     // 初始化复选框
@@ -323,8 +349,16 @@ window.closeInvoiceDetail = function() {
     document.getElementById('invoiceDetailModal').style.display = 'none';
 }
 
-// 添加删除确认函数
+// 修改删除确认函数
 window.confirmDelete = function(invoiceId) {
+    // 如果是普通用户且发票已提交，直接返回
+    if (!isStaff) {
+        const invoice = document.querySelector(`tr[data-invoice-id="${invoiceId}"]`);
+        if (invoice && invoice.dataset.reimbursementStatus !== 'NOT_SUBMITTED') {
+            return;
+        }
+    }
+    
     if (confirm('确定要删除这张发票吗？此操作不可恢复！')) {
         fetch(`${INVOICE_DELETE_URL}${invoiceId}/delete/`, {
             method: 'POST',
